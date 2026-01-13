@@ -19,7 +19,7 @@ export function ChatMessage({ message, isLast }: ChatMessageProps) {
       transition={{ duration: 0.3, ease: 'easeOut' }}
       className={cn(
         'flex gap-3 max-w-3xl mx-auto w-full px-4',
-        isUser ? 'flex-row-reverse' : 'flex-row'
+        isUser ? 'justify-end' : 'justify-start'
       )}
       data-testid={`message-${message.id}`}
     >
@@ -31,7 +31,7 @@ export function ChatMessage({ message, isLast }: ChatMessageProps) {
 
       <div
         className={cn(
-          'flex flex-col gap-1 max-w-[80%]',
+          'flex flex-col gap-1 max-w-[75%]',
           isUser ? 'items-end' : 'items-start'
         )}
       >
@@ -39,15 +39,16 @@ export function ChatMessage({ message, isLast }: ChatMessageProps) {
           className={cn(
             'px-4 py-3 rounded-2xl text-sm leading-relaxed',
             isUser
-              ? 'bg-gradient-to-br from-purple-600 to-violet-600 text-white rounded-br-md'
-              : 'bg-card border border-border/50 text-foreground rounded-bl-md',
-            message.isStreaming && !isUser && 'animate-pulse'
+              ? 'bg-gradient-to-br from-purple-600 to-violet-500 text-white rounded-br-sm shadow-lg shadow-purple-500/20'
+              : 'bg-card/80 backdrop-blur-sm border border-purple-500/20 text-foreground rounded-bl-sm shadow-lg shadow-purple-500/5',
+            message.isStreaming && !isUser && 'border-purple-500/40'
           )}
+          style={!isUser ? { boxShadow: '0 0 20px rgba(168, 85, 247, 0.08), 0 4px 12px rgba(0,0,0,0.15)' } : undefined}
         >
           {message.content}
           {message.isStreaming && (
             <motion.span
-              className="inline-block ml-1"
+              className="inline-block ml-1 text-purple-400"
               animate={{ opacity: [1, 0] }}
               transition={{ duration: 0.5, repeat: Infinity }}
             >
@@ -61,7 +62,7 @@ export function ChatMessage({ message, isLast }: ChatMessageProps) {
         </span>
       </div>
 
-      {isUser && <div className="w-6 flex-shrink-0" />}
+      {isUser && <div className="w-8 flex-shrink-0" />}
     </motion.div>
   );
 }
