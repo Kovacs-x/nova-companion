@@ -28,10 +28,10 @@ import { v4 as uuidv4 } from 'uuid';
 interface VersionsPageProps {
   versions: NovaVersion[];
   conversations: Conversation[];
-  onCreateVersion: (version: Omit<NovaVersion, 'id' | 'createdAt' | 'updatedAt'>) => NovaVersion;
-  onUpdateVersion: (id: string, updates: Partial<NovaVersion>) => void;
-  onCloneVersion: (id: string, newName: string) => NovaVersion | null;
-  onDeleteVersion: (id: string) => void;
+  onCreateVersion: (version: Omit<NovaVersion, 'id' | 'createdAt' | 'updatedAt'>) => NovaVersion | Promise<NovaVersion>;
+  onUpdateVersion: (id: string, updates: Partial<NovaVersion>) => void | Promise<void>;
+  onCloneVersion: (id: string, newName: string) => NovaVersion | null | Promise<NovaVersion | null>;
+  onDeleteVersion: (id: string) => void | Promise<void>;
 }
 
 export default function VersionsPage({
@@ -68,9 +68,9 @@ export default function VersionsPage({
     }
   };
 
-  const handleClone = () => {
+  const handleClone = async () => {
     if (selectedVersion && cloneName) {
-      const cloned = onCloneVersion(selectedVersion.id, cloneName);
+      const cloned = await onCloneVersion(selectedVersion.id, cloneName);
       if (cloned) {
         setSelectedVersion(cloned);
         setShowCloneDialog(false);

@@ -1,34 +1,105 @@
-import { useState, useEffect, useCallback } from 'react';
-import { NovaState, NovaVersion, Conversation, Memory, Message, NovaMood, Boundary } from '@/lib/types';
-import { loadState, saveState, resetState, exportData, importData } from '@/lib/storage';
+import { useState, useCallback } from 'react';
+import { NovaState, NovaVersion, Conversation, Memory, Message, NovaMood, Boundary, DEFAULT_STATE } from '@/lib/types';
+import { api } from '@/lib/api';
 import { v4 as uuidv4 } from 'uuid';
 
 export function useNovaState() {
-  const [state, setState] = useState<NovaState>(() => loadState());
+  const [state, setState] = useState<NovaState>(DEFAULT_STATE);
+  const [isReady, setIsReady] = useState(false);
 
-  useEffect(() => {
-    saveState(state);
-  }, [state]);
+  const loadDataFromServer = async () => {
+    try {
+      const [versions, conversations, memories, settings] = await Promise.all([
+        api.versions.list(),
+        api.conversations.list(),
+        api.memories.list(),
+        api.settings.get(),
+      ]);
+
+      const conversationsWithMessages = await Promise.all(
+        conversations.map(async (conv: any) => {
+          try {
+            const fullConv = await api.conversations.get(conv.id);
+            return {
+              ...conv,
+              messages: fullConv.messages || [],
+              createdAt: conv.createdAt,
+              updatedAt: conv.updatedAt,
+            };
+          } catch {
+            return { ...conv, messages: [] };
+          }
+        })
+      );
+
+      setState({
+        schemaVersion: 1,
+        versions: versions.map((v: any) => ({
+          ...v,
+          createdAt: v.createdAt,
+          updatedAt: v.updatedAt,
+        })),
+        conversations: conversationsWithMessages,
+        memories: memories.map((m: any) => ({
+          ...m,
+          createdAt: m.createdAt,
+        })),
+        settings: {
+          provider: settings.provider || 'openai',
+          apiEndpoint: settings.apiEndpoint || 'https://api.openai.com/v1',
+          modelName: settings.modelName || 'gpt-4',
+          boundaries: settings.boundaries || [],
+        },
+        currentMood: settings.currentMood || DEFAULT_STATE.currentMood,
+        onboardingComplete: true,
+      });
+    } catch (error) {
+      console.error('Failed to load data from server:', error);
+      setState(prev => ({ ...prev, onboardingComplete: true }));
+    } finally {
+      setIsReady(true);
+    }
+  };
 
   const completeOnboarding = useCallback(() => {
     setState(prev => ({ ...prev, onboardingComplete: true }));
   }, []);
 
-  const createVersion = useCallback((version: Omit<NovaVersion, 'id' | 'createdAt' | 'updatedAt'>) => {
-    const newVersion: NovaVersion = {
-      ...version,
-      id: uuidv4(),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    setState(prev => ({
-      ...prev,
-      versions: [...prev.versions, newVersion],
-    }));
-    return newVersion;
+  const createVersion = useCallback(async (version: Omit<NovaVersion, 'id' | 'createdAt' | 'updatedAt'>) => {
+    try {
+      const created = await api.versions.create(version);
+      const newVersion: NovaVersion = {
+        ...created,
+        createdAt: created.createdAt,
+        updatedAt: created.updatedAt,
+      };
+      setState(prev => ({
+        ...prev,
+        versions: [...prev.versions, newVersion],
+      }));
+      return newVersion;
+    } catch (error) {
+      console.error('Failed to create version:', error);
+      const localVersion: NovaVersion = {
+        ...version,
+        id: uuidv4(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      setState(prev => ({
+        ...prev,
+        versions: [...prev.versions, localVersion],
+      }));
+      return localVersion;
+    }
   }, []);
 
-  const updateVersion = useCallback((id: string, updates: Partial<NovaVersion>) => {
+  const updateVersion = useCallback(async (id: string, updates: Partial<NovaVersion>) => {
+    try {
+      await api.versions.update(id, updates);
+    } catch (error) {
+      console.error('Failed to update version:', error);
+    }
     setState(prev => ({
       ...prev,
       versions: prev.versions.map(v =>
@@ -37,26 +108,46 @@ export function useNovaState() {
     }));
   }, []);
 
-  const cloneVersion = useCallback((id: string, newName: string) => {
-    const original = state.versions.find(v => v.id === id);
-    if (!original) return null;
+  const cloneVersion = useCallback(async (id: string, newName: string) => {
+    try {
+      const cloned = await api.versions.clone(id, newName);
+      const newVersion: NovaVersion = {
+        ...cloned,
+        createdAt: cloned.createdAt,
+        updatedAt: cloned.updatedAt,
+      };
+      setState(prev => ({
+        ...prev,
+        versions: [...prev.versions, newVersion],
+      }));
+      return newVersion;
+    } catch (error) {
+      console.error('Failed to clone version:', error);
+      const original = state.versions.find(v => v.id === id);
+      if (!original) return null;
 
-    const cloned: NovaVersion = {
-      ...original,
-      id: uuidv4(),
-      name: newName,
-      parentVersionId: id,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    setState(prev => ({
-      ...prev,
-      versions: [...prev.versions, cloned],
-    }));
-    return cloned;
+      const cloned: NovaVersion = {
+        ...original,
+        id: uuidv4(),
+        name: newName,
+        parentVersionId: id,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      setState(prev => ({
+        ...prev,
+        versions: [...prev.versions, cloned],
+      }));
+      return cloned;
+    }
   }, [state.versions]);
 
-  const deleteVersion = useCallback((id: string) => {
+  const deleteVersion = useCallback(async (id: string) => {
+    try {
+      await api.versions.delete(id);
+    } catch (error) {
+      console.error('Failed to delete version:', error);
+    }
     setState(prev => ({
       ...prev,
       versions: prev.versions.filter(v => v.id !== id),
@@ -64,7 +155,7 @@ export function useNovaState() {
   }, []);
 
   const createConversation = useCallback((versionId: string, title?: string) => {
-    const newConv: Conversation = {
+    const localConv: Conversation = {
       id: uuidv4(),
       title: title || 'New Conversation',
       versionId,
@@ -72,14 +163,32 @@ export function useNovaState() {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
+    
     setState(prev => ({
       ...prev,
-      conversations: [newConv, ...prev.conversations],
+      conversations: [localConv, ...prev.conversations],
     }));
-    return newConv;
+
+    api.conversations.create(versionId, title).then(created => {
+      setState(prev => ({
+        ...prev,
+        conversations: prev.conversations.map(c =>
+          c.id === localConv.id ? { ...c, id: created.id } : c
+        ),
+      }));
+    }).catch(error => {
+      console.error('Failed to create conversation on server:', error);
+    });
+
+    return localConv;
   }, []);
 
-  const updateConversation = useCallback((id: string, updates: Partial<Conversation>) => {
+  const updateConversation = useCallback(async (id: string, updates: Partial<Conversation>) => {
+    try {
+      await api.conversations.update(id, updates);
+    } catch (error) {
+      console.error('Failed to update conversation:', error);
+    }
     setState(prev => ({
       ...prev,
       conversations: prev.conversations.map(c =>
@@ -88,7 +197,12 @@ export function useNovaState() {
     }));
   }, []);
 
-  const deleteConversation = useCallback((id: string) => {
+  const deleteConversation = useCallback(async (id: string) => {
+    try {
+      await api.conversations.delete(id);
+    } catch (error) {
+      console.error('Failed to delete conversation:', error);
+    }
     setState(prev => ({
       ...prev,
       conversations: prev.conversations.filter(c => c.id !== id),
@@ -101,6 +215,7 @@ export function useNovaState() {
       id: uuidv4(),
       timestamp: new Date().toISOString(),
     };
+    
     setState(prev => ({
       ...prev,
       conversations: prev.conversations.map(c =>
@@ -109,6 +224,11 @@ export function useNovaState() {
           : c
       ),
     }));
+
+    api.conversations.addMessage(conversationId, message.role, message.content).catch(error => {
+      console.error('Failed to save message to server:', error);
+    });
+
     return newMessage;
   }, []);
 
@@ -126,97 +246,170 @@ export function useNovaState() {
     }));
   }, []);
 
-  const createMemory = useCallback((memory: Omit<Memory, 'id' | 'createdAt'>) => {
-    const newMemory: Memory = {
-      ...memory,
-      id: uuidv4(),
-      createdAt: new Date().toISOString(),
-    };
-    setState(prev => ({
-      ...prev,
-      memories: [...prev.memories, newMemory],
-    }));
-    return newMemory;
+  const createMemory = useCallback(async (memory: Omit<Memory, 'id' | 'createdAt'>) => {
+    try {
+      const created = await api.memories.create(memory);
+      const newMemory: Memory = {
+        ...created,
+        createdAt: created.createdAt,
+      };
+      setState(prev => ({
+        ...prev,
+        memories: [...prev.memories, newMemory],
+      }));
+      return newMemory;
+    } catch (error) {
+      console.error('Failed to create memory:', error);
+      const localMemory: Memory = {
+        ...memory,
+        id: uuidv4(),
+        createdAt: new Date().toISOString(),
+      };
+      setState(prev => ({
+        ...prev,
+        memories: [...prev.memories, localMemory],
+      }));
+      return localMemory;
+    }
   }, []);
 
-  const updateMemory = useCallback((id: string, updates: Partial<Memory>) => {
+  const updateMemory = useCallback(async (id: string, updates: Partial<Memory>) => {
+    try {
+      await api.memories.update(id, updates);
+    } catch (error) {
+      console.error('Failed to update memory:', error);
+    }
     setState(prev => ({
       ...prev,
       memories: prev.memories.map(m => m.id === id ? { ...m, ...updates } : m),
     }));
   }, []);
 
-  const deleteMemory = useCallback((id: string) => {
+  const deleteMemory = useCallback(async (id: string) => {
+    try {
+      await api.memories.delete(id);
+    } catch (error) {
+      console.error('Failed to delete memory:', error);
+    }
     setState(prev => ({
       ...prev,
       memories: prev.memories.filter(m => m.id !== id),
     }));
   }, []);
 
-  const updateSettings = useCallback((updates: Partial<typeof state.settings>) => {
+  const updateSettings = useCallback(async (updates: Partial<typeof state.settings>) => {
+    try {
+      await api.settings.update(updates);
+    } catch (error) {
+      console.error('Failed to update settings:', error);
+    }
     setState(prev => ({
       ...prev,
       settings: { ...prev.settings, ...updates },
     }));
   }, []);
 
-  const addBoundary = useCallback((boundary: Omit<Boundary, 'id'>) => {
+  const addBoundary = useCallback(async (boundary: Omit<Boundary, 'id'>) => {
     const newBoundary: Boundary = { ...boundary, id: uuidv4() };
+    const newBoundaries = [...state.settings.boundaries, newBoundary];
+    
+    try {
+      await api.settings.update({ boundaries: newBoundaries });
+    } catch (error) {
+      console.error('Failed to add boundary:', error);
+    }
+    
     setState(prev => ({
       ...prev,
       settings: {
         ...prev.settings,
-        boundaries: [...prev.settings.boundaries, newBoundary],
+        boundaries: newBoundaries,
       },
     }));
-  }, []);
+  }, [state.settings.boundaries]);
 
-  const updateBoundary = useCallback((id: string, updates: Partial<Boundary>) => {
+  const updateBoundary = useCallback(async (id: string, updates: Partial<Boundary>) => {
+    const newBoundaries = state.settings.boundaries.map(b => b.id === id ? { ...b, ...updates } : b);
+    
+    try {
+      await api.settings.update({ boundaries: newBoundaries });
+    } catch (error) {
+      console.error('Failed to update boundary:', error);
+    }
+    
     setState(prev => ({
       ...prev,
       settings: {
         ...prev.settings,
-        boundaries: prev.settings.boundaries.map(b => b.id === id ? { ...b, ...updates } : b),
+        boundaries: newBoundaries,
       },
     }));
-  }, []);
+  }, [state.settings.boundaries]);
 
-  const deleteBoundary = useCallback((id: string) => {
+  const deleteBoundary = useCallback(async (id: string) => {
+    const newBoundaries = state.settings.boundaries.filter(b => b.id !== id);
+    
+    try {
+      await api.settings.update({ boundaries: newBoundaries });
+    } catch (error) {
+      console.error('Failed to delete boundary:', error);
+    }
+    
     setState(prev => ({
       ...prev,
       settings: {
         ...prev.settings,
-        boundaries: prev.settings.boundaries.filter(b => b.id !== id),
+        boundaries: newBoundaries,
       },
     }));
-  }, []);
+  }, [state.settings.boundaries]);
 
-  const updateMood = useCallback((mood: Partial<NovaMood>) => {
+  const updateMood = useCallback(async (mood: Partial<NovaMood>) => {
+    const newMood = { ...state.currentMood, ...mood };
+    
+    try {
+      await api.settings.update({ currentMood: newMood });
+    } catch (error) {
+      console.error('Failed to update mood:', error);
+    }
+    
     setState(prev => ({
       ...prev,
-      currentMood: { ...prev.currentMood, ...mood },
+      currentMood: newMood,
     }));
-  }, []);
+  }, [state.currentMood]);
 
-  const doExportData = useCallback(() => {
-    return exportData(state);
+  const doExportData = useCallback(async () => {
+    try {
+      const data = await api.backups.export();
+      return JSON.stringify(data, null, 2);
+    } catch (error) {
+      console.error('Failed to export data:', error);
+      return JSON.stringify(state, null, 2);
+    }
   }, [state]);
 
   const doImportData = useCallback((json: string) => {
-    const imported = importData(json);
-    if (imported) {
-      setState(imported);
-      return true;
+    try {
+      const parsed = JSON.parse(json);
+      if (parsed.schemaVersion) {
+        loadDataFromServer();
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
     }
-    return false;
   }, []);
 
   const doResetState = useCallback(() => {
-    setState(resetState());
+    setState(DEFAULT_STATE);
   }, []);
 
   return {
     state,
+    isReady,
+    loadData: loadDataFromServer,
     completeOnboarding,
     createVersion,
     updateVersion,
@@ -238,5 +431,6 @@ export function useNovaState() {
     exportData: doExportData,
     importData: doImportData,
     resetState: doResetState,
+    reloadData: loadDataFromServer,
   };
 }

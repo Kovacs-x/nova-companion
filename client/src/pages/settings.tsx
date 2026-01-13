@@ -32,8 +32,8 @@ interface SettingsPageProps {
   settings: NovaSettings;
   conversations: Conversation[];
   versions: NovaVersion[];
-  onUpdateSettings: (updates: Partial<NovaSettings>) => void;
-  onExport: () => string;
+  onUpdateSettings: (updates: Partial<NovaSettings>) => void | Promise<void>;
+  onExport: () => string | Promise<string>;
   onImport: (json: string) => boolean;
   onLogout?: () => void;
 }
@@ -89,8 +89,8 @@ export default function SettingsPage({
     });
   };
 
-  const handleExport = () => {
-    const data = onExport();
+  const handleExport = async () => {
+    const data = await onExport();
     const blob = new Blob([data], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');

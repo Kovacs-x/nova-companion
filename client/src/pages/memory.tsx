@@ -32,9 +32,9 @@ interface MemoryPageProps {
   memories: Memory[];
   conversations: Conversation[];
   versions: NovaVersion[];
-  onCreateMemory: (memory: Omit<Memory, 'id' | 'createdAt'>) => Memory;
-  onUpdateMemory: (id: string, updates: Partial<Memory>) => void;
-  onDeleteMemory: (id: string) => void;
+  onCreateMemory: (memory: Omit<Memory, 'id' | 'createdAt'>) => Memory | Promise<Memory>;
+  onUpdateMemory: (id: string, updates: Partial<Memory>) => void | Promise<void>;
+  onDeleteMemory: (id: string) => void | Promise<void>;
 }
 
 const importanceColors = {

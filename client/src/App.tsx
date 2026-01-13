@@ -38,6 +38,7 @@ function NovaApp() {
         setAuthState('setup');
       } else if (me.authenticated) {
         setAuthState('authenticated');
+        nova.loadData();
       } else {
         setAuthState('login');
       }
@@ -48,6 +49,7 @@ function NovaApp() {
 
   const handleAuthSuccess = () => {
     setAuthState('authenticated');
+    nova.loadData();
   };
 
   const handleLogout = async () => {
