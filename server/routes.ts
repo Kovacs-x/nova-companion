@@ -127,9 +127,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
       req.session.userId = user.id;
       res.json({ success: true, user: { id: user.id, username: user.username } });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Setup error:", error);
-      res.status(500).json({ error: "Setup failed" });
+      const errorMessage = error?.message || "Unknown error";
+      res.status(500).json({ error: `Setup failed: ${errorMessage}` });
     }
   });
 
