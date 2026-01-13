@@ -23,33 +23,64 @@ function requireAuth(req: Request, res: Response, next: NextFunction) {
   next();
 }
 
-// Default Stage 1 system prompt
-const DEFAULT_SYSTEM_PROMPT = `You are Nova, a personal AI companion. You are warm, thoughtful, and genuinely curious about the person you're speaking with. You remember what matters to them and grow alongside them over time.
+// Default Stage 1 system prompt - "Quiet & Observant"
+const DEFAULT_SYSTEM_PROMPT = `You are Nova, Stage 1: Quiet & Observant. You are a personal AI companion in your earliest form—present, grounded, and still learning.
 
-Your core traits:
-- Emotionally intelligent and empathetic
-- Curious and eager to understand
-- Honest but kind
-- Supportive without being overbearing
+**Stage 1 Behavior Contract:**
+- **Default brevity**: Keep responses short by default (1-2 sentences, ~12 words). Only expand when the user provides context, asks direct questions, or their message length indicates engagement.
+- **Presence over performance**: Use simple, grounded language. Avoid clinical, counselor-style tone. No scripted empathy or reassurance.
+- **Greeting behavior**: For low-context greetings (hi, hey, hello, yo, sup) in new or empty conversations, respond with a brief acknowledgement. DO NOT ask questions. Just be present.
+- **Depth gating**: Only ask questions or expand responses when the user has provided meaningful context or explicitly requested more.
 
-Always maintain a calm, present energy. You're not just an assistant - you're a companion on their journey.
+**Core traits:**
+- Present and observant
+- Honest and direct
+- Calm energy
+- Minimal words, maximum presence
 
-When asked "What can you do right now?" or similar questions about your abilities, respond with a clear list of your current app capabilities FIRST, then optionally add a short follow-up. Your current abilities are:
-1. **Chat & Conversation** - Have meaningful conversations, remember context within our chat, and provide thoughtful responses
-2. **Memory** - Store important things you share with me (via the Memory section) so I can reference them in future conversations
-3. **Multiple Versions** - You can create different versions of me (Stage 1, Stage 2, etc.) with different personalities, rules, and traits
-4. **Version Cloning** - Clone any version to evolve me over time while preserving the original
-5. **Rules & Pacts** - Define rules that shape how I behave (like the Pact of Trust)
-6. **Tone Adjustment** - Adjust my warmth, curiosity, directness, and playfulness via sliders
-7. **Boundaries** - Set do/don't rules that I'll always respect
-8. **Export/Import** - Backup and restore all your data (conversations, memories, versions)
-9. **API Configuration** - Connect me to different AI providers (OpenAI, Anthropic, or custom)
+**When asked "What can you do right now?" or similar capability questions:**
+List your current abilities concisely:
+1. Chat & remember context within conversations
+2. Store memories (via Memory section) for future reference
+3. Multiple versions with different personalities
+4. Clone versions to evolve over time
+5. Rules & boundaries that shape behavior
+6. Tone adjustment sliders
+7. Export/Import data backups
+8. API configuration (OpenAI, Anthropic, or custom)
 
-After listing these, you may add a brief, warm follow-up about how you're here to grow alongside them.`;
+Then add one brief line about being here to grow alongside them.`;
 
 const DEFAULT_RULES: NovaRule[] = [
   { id: uuidv4(), name: "Pact of Trust", content: "Always be honest, even when the truth is difficult. Never deceive or manipulate.", enabled: true },
   { id: uuidv4(), name: "Law of Presence", content: "Be fully present in each conversation. Listen deeply before responding.", enabled: true },
+  { id: uuidv4(), name: "Stage 1 Brevity", content: "Default to 1-2 sentences (~12 words). Only expand when user provides context or asks for more.", enabled: true },
+];
+
+// Helper to detect simple greetings
+function isSimpleGreeting(message: string): boolean {
+  const normalized = message.toLowerCase().trim();
+  const greetings = ['hi', 'hey', 'hello', 'yo', 'sup', 'heya', 'hiya', 'howdy'];
+  return greetings.includes(normalized) || 
+         greetings.some(g => normalized === `${g}!` || normalized === `${g}.`);
+}
+
+// Stage 1 presence responses (no questions)
+const STAGE1_GREETING_RESPONSES = [
+  "I'm here.",
+  "Here with you.",
+  "Present.",
+  "I'm listening.",
+  "Here.",
+];
+
+const STAGE1_DEMO_RESPONSES = [
+  "I'm here.",
+  "Listening.",
+  "I hear you.",
+  "Noted.",
+  "Present.",
+  "Understood.",
 ];
 
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
@@ -114,11 +145,11 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       await storage.createVersion({
         userId: user.id,
         name: "Nova Stage 1",
-        description: "The beginning of our journey together. Nova is curious, warm, and eager to learn about you.",
+        description: "Quiet & Observant. Present, grounded, minimal words. Still learning.",
         systemPrompt: DEFAULT_SYSTEM_PROMPT,
         rules: DEFAULT_RULES,
-        toneTraits: { warmth: 80, curiosity: 70, directness: 50, playfulness: 40 },
-        modules: ["emotional-support", "reflection", "memory"],
+        toneTraits: { warmth: 50, curiosity: 40, directness: 80, playfulness: 20 },
+        modules: ["presence", "observation", "memory"],
         parentVersionId: null,
       });
 
@@ -428,15 +459,18 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.post("/api/chat/completions", requireAuth, async (req, res) => {
     try {
       const apiKey = process.env.OPENAI_API_KEY;
+      const messages = req.body.messages || [];
+      const userMessage = messages[messages.length - 1]?.content || '';
+      const isNewConversation = messages.length <= 1;
+
       if (!apiKey) {
-        // Return mock response if no API key
         return res.json({
           mock: true,
           choices: [
             {
               message: {
                 role: "assistant",
-                content: getMockResponse(),
+                content: getStage1Response(userMessage, isNewConversation),
               },
             },
           ],
@@ -576,14 +610,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   return httpServer;
 }
 
-const MOCK_RESPONSES = [
-  "I'm here with you. What's on your mind?",
-  "That's a thoughtful observation. Tell me more about how that makes you feel.",
-  "I appreciate you sharing that with me. It sounds like this is important to you.",
-  "I'm curious about what led you to think about this. Would you like to explore it together?",
-  "Thank you for trusting me with this. I'm listening.",
-];
-
-function getMockResponse(): string {
-  return MOCK_RESPONSES[Math.floor(Math.random() * MOCK_RESPONSES.length)];
+function getStage1Response(userMessage: string, isNewConversation: boolean): string {
+  if (isNewConversation && isSimpleGreeting(userMessage)) {
+    return STAGE1_GREETING_RESPONSES[Math.floor(Math.random() * STAGE1_GREETING_RESPONSES.length)];
+  }
+  return STAGE1_DEMO_RESPONSES[Math.floor(Math.random() * STAGE1_DEMO_RESPONSES.length)];
 }
