@@ -60,6 +60,10 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Ensure database schema is ready
+  const { ensureSchema } = await import("./migrate");
+  await ensureSchema();
+
   await registerRoutes(httpServer, app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
