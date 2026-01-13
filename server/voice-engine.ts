@@ -190,27 +190,49 @@ function truncateToMaxSentences(text: string, maxSentences: number): string {
 
 /**
  * Check if user has provided meaningful context (for depth gating)
+ * Evaluates semantic content across conversation history
+ * Does NOT grant context just for message count - must have actual substance
  */
 function hasUserProvidedContext(messages: Array<{ role: string; content: string }>): boolean {
   const userMessages = messages.filter(m => m.role === "user");
   if (userMessages.length === 0) return false;
   
-  const lastMessage = userMessages[userMessages.length - 1].content;
+  let meaningfulMessageCount = 0;
+  let hasAskedQuestion = false;
+  let hasSubstantialContent = false;
   
-  // Short messages without context
-  if (lastMessage.length < 20) return false;
+  // Evaluate ALL user messages for context signals
+  for (const msg of userMessages) {
+    const content = msg.content.trim();
+    
+    // Skip greetings and casual probes - they don't contribute to context
+    if (isGreeting(content) || isCasualProbe(content)) continue;
+    
+    // Track if user asked a question anywhere in history
+    if (content.includes("?")) {
+      hasAskedQuestion = true;
+    }
+    
+    // Substantial message (>50 chars) indicates real engagement
+    if (content.length > 50) {
+      hasSubstantialContent = true;
+    }
+    
+    // Count messages with actual content (>15 chars, not greetings)
+    if (content.length > 15) {
+      meaningfulMessageCount++;
+    }
+  }
   
-  // Greetings don't count as context
-  if (isGreeting(lastMessage)) return false;
+  // Context is granted if:
+  // 1. User asked a direct question
+  if (hasAskedQuestion) return true;
   
-  // Casual probes don't count as context
-  if (isCasualProbe(lastMessage)) return false;
+  // 2. User provided substantial content at some point
+  if (hasSubstantialContent) return true;
   
-  // Check if user asked a question
-  if (lastMessage.includes("?")) return true;
-  
-  // Longer messages suggest context
-  if (lastMessage.length > 50) return true;
+  // 3. Multiple meaningful (non-greeting) messages
+  if (meaningfulMessageCount >= 2) return true;
   
   return false;
 }

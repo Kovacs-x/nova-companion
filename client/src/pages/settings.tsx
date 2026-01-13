@@ -12,6 +12,7 @@ import {
   LogOut,
   Activity,
   Server,
+  Volume2,
 } from 'lucide-react';
 import { Sidebar } from '@/components/nova/Sidebar';
 import { Button } from '@/components/ui/button';
@@ -24,7 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { NovaSettings, Conversation, NovaVersion } from '@/lib/types';
+import { NovaSettings, Conversation, NovaVersion, VoiceMode } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
@@ -49,6 +50,13 @@ const models = {
   anthropic: ['claude-3-opus', 'claude-3-sonnet', 'claude-3-haiku'],
   custom: [],
 };
+
+const voiceModes: { id: VoiceMode; name: string; description: string }[] = [
+  { id: 'quiet', name: 'Quiet', description: 'Calm, minimal, presence-focused (default)' },
+  { id: 'engaged', name: 'Engaged', description: 'Warm, conversational, asks questions' },
+  { id: 'mythic', name: 'Mythic', description: 'Weighted, poetic, each word matters' },
+  { id: 'blunt', name: 'Blunt', description: 'Direct, no fluff, minimal warmth' },
+];
 
 export default function SettingsPage({
   settings,
@@ -262,7 +270,46 @@ export default function SettingsPage({
             <motion.section
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
+              transition={{ delay: 0.15 }}
+              className="space-y-4"
+            >
+              <h2 className="font-display text-lg font-semibold flex items-center gap-2">
+                <Volume2 className="w-5 h-5 text-purple-400" />
+                Voice Mode
+              </h2>
+
+              <div className="p-4 rounded-xl bg-card border border-border/50">
+                <label className="text-sm font-medium text-muted-foreground mb-3 block">
+                  Response Style
+                </label>
+                <div className="grid gap-2">
+                  {voiceModes.map(mode => (
+                    <button
+                      key={mode.id}
+                      onClick={() => handleChange({ voiceMode: mode.id })}
+                      className={cn(
+                        "flex flex-col items-start p-3 rounded-lg border transition-colors text-left",
+                        localSettings.voiceMode === mode.id
+                          ? "border-purple-500 bg-purple-500/10"
+                          : "border-border/50 hover:border-border hover:bg-muted/30"
+                      )}
+                      data-testid={`voice-mode-${mode.id}`}
+                    >
+                      <span className="font-medium text-sm">{mode.name}</span>
+                      <span className="text-xs text-muted-foreground">{mode.description}</span>
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground mt-3">
+                  Voice mode affects Nova's response style without changing core identity.
+                </p>
+              </div>
+            </motion.section>
+
+            <motion.section
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.25 }}
               className="space-y-4"
             >
               <h2 className="font-display text-lg font-semibold">Data Management</h2>

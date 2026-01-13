@@ -67,6 +67,7 @@ export function useNovaState() {
           provider: settings.provider || 'openai',
           apiEndpoint: settings.apiEndpoint || 'https://api.openai.com/v1',
           modelName: settings.modelName || 'gpt-4',
+          voiceMode: settings.voiceMode || 'quiet',
           boundaries: settings.boundaries || [],
         },
         currentMood: settings.currentMood || DEFAULT_STATE.currentMood,

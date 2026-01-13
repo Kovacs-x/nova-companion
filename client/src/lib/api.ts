@@ -111,10 +111,8 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({
           model,
-          messages: [
-            { role: 'system', content: systemPrompt },
-            ...messages.map(m => ({ role: m.role, content: m.content })),
-          ],
+          system_prompt: systemPrompt,
+          messages: messages.map(m => ({ role: m.role, content: m.content })),
         }),
       }),
   },

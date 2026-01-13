@@ -5,7 +5,8 @@ import bcrypt from "bcrypt";
 import { storage } from "./storage";
 import { z } from "zod";
 import { v4 as uuidv4 } from "uuid";
-import type { NovaRule, Boundary, NovaMood } from "@shared/schema";
+import type { NovaRule, Boundary, NovaMood, VoiceMode } from "@shared/schema";
+import { generateResponse, buildEnhancedSystemPrompt } from "./voice-engine";
 
 const SALT_ROUNDS = 12;
 
@@ -460,62 +461,77 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  // ============ OPENAI PROXY ============
+  // ============ OPENAI PROXY WITH VOICE ENGINE ============
 
   app.post("/api/chat/completions", requireAuth, async (req, res) => {
     try {
       const apiKey = process.env.OPENAI_API_KEY;
       const messages = req.body.messages || [];
-      const userMessage = messages[messages.length - 1]?.content || '';
+      const systemPrompt = req.body.system_prompt || "";
+      const modelName = req.body.model || "gpt-4";
       
-      // Count only user messages to detect new conversations (system messages don't count)
-      const userMessages = messages.filter((m: any) => m.role === 'user');
-      const isNewConversation = userMessages.length <= 1;
-
-      // Stage 1: Short-circuit simple greetings in new conversations (both demo and API modes)
-      if (isNewConversation && isSimpleGreeting(userMessage)) {
-        return res.json({
-          mock: !apiKey,
-          stage1Greeting: true,
-          choices: [
-            {
-              message: {
-                role: "assistant",
-                content: STAGE1_GREETING_RESPONSES[Math.floor(Math.random() * STAGE1_GREETING_RESPONSES.length)],
-              },
-            },
-          ],
-        });
-      }
-
-      if (!apiKey) {
-        return res.json({
-          mock: true,
-          choices: [
-            {
-              message: {
-                role: "assistant",
-                content: STAGE1_DEMO_RESPONSES[Math.floor(Math.random() * STAGE1_DEMO_RESPONSES.length)],
-              },
-            },
-          ],
-        });
-      }
-
+      // Get user settings for voice mode
       const settings = await storage.getSettings(req.session.userId!);
+      const voiceMode: VoiceMode = (settings?.voiceMode as VoiceMode) || "quiet";
       const endpoint = settings?.apiEndpoint || "https://api.openai.com/v1";
 
-      const response = await fetch(`${endpoint}/chat/completions`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify(req.body),
-      });
+      // Helper function to call the model
+      // Note: sysPrompt is the enhanced system prompt from voice engine
+      const callModel = async (msgs: Array<{ role: string; content: string }>, sysPrompt: string): Promise<string> => {
+        if (!apiKey) {
+          // Demo mode - return a placeholder
+          return STAGE1_DEMO_RESPONSES[Math.floor(Math.random() * STAGE1_DEMO_RESPONSES.length)];
+        }
 
-      const data = await response.json();
-      res.json(data);
+        // Build messages array with system prompt first, then user/assistant messages
+        const apiMessages = [
+          { role: "system", content: sysPrompt },
+          ...msgs.filter(m => m.role !== "system"), // Exclude any system messages from input
+        ];
+
+        const response = await fetch(`${endpoint}/chat/completions`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({
+            model: modelName,
+            messages: apiMessages,
+          }),
+        });
+
+        const data = await response.json();
+        return data.choices?.[0]?.message?.content || "I'm here.";
+      };
+
+      // Route through voice engine
+      const result = await generateResponse(
+        {
+          messages,
+          systemPrompt,
+          mode: voiceMode,
+          modelName,
+        },
+        callModel
+      );
+
+      res.json({
+        mock: !apiKey,
+        voiceEngine: {
+          shortCircuited: result.shortCircuited,
+          rewritten: result.rewritten,
+          mode: voiceMode,
+        },
+        choices: [
+          {
+            message: {
+              role: "assistant",
+              content: result.response,
+            },
+          },
+        ],
+      });
     } catch (error) {
       console.error("OpenAI proxy error:", error);
       res.status(500).json({ error: "Chat completion failed" });
