@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { NovaState, NovaVersion, Conversation, Memory, Message, NovaMood, Boundary, DEFAULT_STATE } from '@/lib/types';
 import { api } from '@/lib/api';
 import { v4 as uuidv4 } from 'uuid';
+import { generateConversationTitle } from '@/lib/conversation-utils';
 
 export function useNovaState() {
   const [state, setState] = useState<NovaState>(DEFAULT_STATE);
@@ -155,7 +156,8 @@ export function useNovaState() {
   }, []);
 
   const createConversation = useCallback(async (versionId: string, title?: string) => {
-    const created = await api.conversations.create(versionId, title);
+    const defaultTitle = title || generateConversationTitle([], new Date().toISOString());
+    const created = await api.conversations.create(versionId, defaultTitle);
     const newConv: Conversation = {
       ...created,
       messages: [],
@@ -204,17 +206,44 @@ export function useNovaState() {
       timestamp: new Date().toISOString(),
     };
     
-    setState(prev => ({
-      ...prev,
-      conversations: prev.conversations.map(c =>
-        c.id === conversationId
-          ? { ...c, messages: [...c.messages, newMessage], updatedAt: new Date().toISOString() }
-          : c
-      ),
-    }));
+    let updatedTitle: string | undefined;
+    
+    setState(prev => {
+      const conversation = prev.conversations.find(c => c.id === conversationId);
+      if (!conversation) return prev;
+
+      const updatedMessages = [...conversation.messages, newMessage];
+      
+      // Generate new title based on updated messages
+      const newTitle = generateConversationTitle(updatedMessages, conversation.createdAt);
+      
+      // Save for server update if changed
+      if (newTitle !== conversation.title) {
+        updatedTitle = newTitle;
+      }
+
+      return {
+        ...prev,
+        conversations: prev.conversations.map(c =>
+          c.id === conversationId
+            ? { 
+                ...c, 
+                messages: updatedMessages, 
+                title: newTitle,
+                updatedAt: new Date().toISOString() 
+              }
+            : c
+        ),
+      };
+    });
 
     try {
       await api.conversations.addMessage(conversationId, message.role, message.content);
+      
+      // Update title on server if it changed
+      if (updatedTitle) {
+        await api.conversations.update(conversationId, { title: updatedTitle });
+      }
     } catch (error) {
       console.error('Failed to save message to server:', error);
     }

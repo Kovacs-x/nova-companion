@@ -158,8 +158,8 @@ export default function ChatPage({
                 <div className="flex items-center gap-3 ml-12 lg:ml-0">
                   <NovaAvatar size="sm" />
                   <div>
-                    <h2 className="font-medium text-sm">{currentConversation.title}</h2>
-                    <span className="text-xs text-purple-400">{currentVersion?.name}</span>
+                    <h2 className="font-medium text-sm">Nova — Companion</h2>
+                    <span className="text-xs text-muted-foreground/60">Present and listening</span>
                   </div>
                 </div>
               </div>
