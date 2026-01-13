@@ -14,9 +14,10 @@ export function ChatMessage({ message, isLast }: ChatMessageProps) {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, ease: 'easeOut' }}
+      initial={{ opacity: 0, transform: 'translateY(6px)' }}
+      animate={{ opacity: 1, transform: 'translateY(0)' }}
+      transition={{ duration: 0.16, ease: 'easeOut' }}
+      style={{ willChange: 'opacity, transform' }}
       className={cn(
         'flex gap-3 max-w-3xl mx-auto w-full px-4',
         isUser ? 'justify-end' : 'justify-start'
@@ -70,10 +71,12 @@ export function ChatMessage({ message, isLast }: ChatMessageProps) {
 export function TypingIndicator() {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -10 }}
-      className="flex gap-3 max-w-3xl mx-auto w-full px-4"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.16, ease: 'easeOut' }}
+      style={{ willChange: 'opacity' }}
+      className="flex gap-3 max-w-3xl mx-auto w-full px-4 min-h-[52px]"
     >
       <div className="flex-shrink-0 mt-1">
         <NovaAvatar size="sm" animated />
@@ -84,8 +87,8 @@ export function TypingIndicator() {
             <motion.div
               key={i}
               className="w-2 h-2 rounded-full bg-purple-400/60"
-              animate={{ y: [0, -4, 0] }}
-              transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.15 }}
+              animate={{ opacity: [0.6, 1, 0.6] }}
+              transition={{ duration: 0.8, repeat: Infinity, delay: i * 0.2 }}
             />
           ))}
         </div>

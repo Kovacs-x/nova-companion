@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sidebar } from '@/components/nova/Sidebar';
 import { NovaPresence } from '@/components/nova/NovaPresence';
@@ -48,12 +48,17 @@ export default function ChatPage({
     ? versions.find(v => v.id === currentConversation.versionId)
     : versions[0];
 
+  // Check if user is near bottom (within 140px)
+  const isNearBottom = () => {
+    if (!scrollContainerRef.current) return true;
+    const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
+    return scrollHeight - scrollTop - clientHeight < 140;
+  };
+
   // Track if user has scrolled up and manage scrolling state for auto-hide scrollbar
   const handleScroll = () => {
     if (!scrollContainerRef.current) return;
-    const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
-    const isAtBottom = scrollHeight - scrollTop - clientHeight < 100;
-    setUserHasScrolledUp(!isAtBottom);
+    setUserHasScrolledUp(!isNearBottom());
 
     // Show scrollbar while scrolling
     setIsScrolling(true);
@@ -66,16 +71,16 @@ export default function ChatPage({
   };
 
   // Auto-scroll to bottom when messages change (unless user scrolled up)
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!userHasScrolledUp && messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+      messagesEndRef.current.scrollIntoView({ behavior: 'auto' });
     }
   }, [currentConversation?.messages, userHasScrolledUp]);
 
   // Also scroll when typing indicator appears
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (isTyping && !userHasScrolledUp && messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+      messagesEndRef.current.scrollIntoView({ behavior: 'auto' });
     }
   }, [isTyping, userHasScrolledUp]);
 
