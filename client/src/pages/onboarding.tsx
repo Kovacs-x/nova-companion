@@ -1,14 +1,12 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, ArrowRight, Layers, Shield, Key } from 'lucide-react';
+import { Sparkles, ArrowRight, Layers, Shield, Heart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { NovaAvatar } from '@/components/nova/NovaAvatar';
 import { cn } from '@/lib/utils';
 
 interface OnboardingProps {
   onComplete: () => void;
-  onUpdateSettings: (settings: { apiKey?: string; modelName?: string }) => void;
 }
 
 const steps = [
@@ -31,22 +29,18 @@ const steps = [
     description: 'Define what Nova should and shouldn\'t do. Your boundaries shape the relationship.',
   },
   {
-    id: 'connect',
-    icon: Key,
-    title: 'Connect (Optional)',
-    description: 'Add your API key to use real AI responses. Skip to use demo mode.',
+    id: 'begin',
+    icon: Heart,
+    title: 'Ready to Begin',
+    description: 'Nova is now ready. Start a conversation and begin building your unique relationship.',
   },
 ];
 
-export default function Onboarding({ onComplete, onUpdateSettings }: OnboardingProps) {
+export default function Onboarding({ onComplete }: OnboardingProps) {
   const [currentStep, setCurrentStep] = useState(0);
-  const [apiKey, setApiKey] = useState('');
 
   const handleNext = () => {
     if (currentStep === steps.length - 1) {
-      if (apiKey) {
-        onUpdateSettings({ apiKey });
-      }
       onComplete();
     } else {
       setCurrentStep(prev => prev + 1);
@@ -124,22 +118,6 @@ export default function Onboarding({ onComplete, onUpdateSettings }: OnboardingP
                 {step.description}
               </p>
 
-              {step.id === 'connect' && (
-                <div className="w-full space-y-4 mb-6">
-                  <Input
-                    type="password"
-                    placeholder="sk-... (OpenAI API Key)"
-                    value={apiKey}
-                    onChange={(e) => setApiKey(e.target.value)}
-                    className="bg-muted/30 border-border/50 text-center"
-                    data-testid="input-api-key"
-                  />
-                  <p className="text-xs text-muted-foreground/60">
-                    Your key is stored locally and never sent to our servers
-                  </p>
-                </div>
-              )}
-
               <div className="flex items-center gap-3 w-full">
                 {currentStep > 0 && currentStep < steps.length - 1 && (
                   <Button
@@ -160,7 +138,10 @@ export default function Onboarding({ onComplete, onUpdateSettings }: OnboardingP
                   data-testid="button-continue"
                 >
                   {currentStep === steps.length - 1 ? (
-                    apiKey ? 'Begin Journey' : 'Start Demo Mode'
+                    <>
+                      <Sparkles className="w-4 h-4 mr-2" />
+                      Start Chatting
+                    </>
                   ) : (
                     <>
                       Continue
@@ -172,10 +153,6 @@ export default function Onboarding({ onComplete, onUpdateSettings }: OnboardingP
             </div>
           </motion.div>
         </AnimatePresence>
-
-        <p className="text-center text-xs text-muted-foreground/40 mt-6">
-          Nova Companion is not therapy. For mental health support, please consult a professional.
-        </p>
       </motion.div>
     </div>
   );

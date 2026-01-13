@@ -57,7 +57,6 @@ export interface Boundary {
 export interface NovaSettings {
   provider: string;
   apiEndpoint: string;
-  apiKey: string;
   modelName: string;
   boundaries: Boundary[];
 }
@@ -138,7 +137,6 @@ export const DEFAULT_STATE: NovaState = {
   settings: {
     provider: 'openai',
     apiEndpoint: 'https://api.openai.com/v1',
-    apiKey: '',
     modelName: 'gpt-4',
     boundaries: [],
   },

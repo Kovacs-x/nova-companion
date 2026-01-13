@@ -45,7 +45,7 @@ export interface NovaRule {
 }
 
 export const insertNovaVersionSchema = createInsertSchema(novaVersions).omit({ id: true, createdAt: true, updatedAt: true });
-export type InsertNovaVersion = z.infer<typeof insertNovaVersionSchema>;
+export type InsertNovaVersion = typeof novaVersions.$inferInsert;
 export type NovaVersion = typeof novaVersions.$inferSelect;
 
 // Conversations
@@ -72,7 +72,7 @@ export const messages = pgTable("messages", {
 });
 
 export const insertMessageSchema = createInsertSchema(messages).omit({ id: true, timestamp: true });
-export type InsertMessage = z.infer<typeof insertMessageSchema>;
+export type InsertMessage = typeof messages.$inferInsert;
 export type Message = typeof messages.$inferSelect;
 
 // Memories
@@ -88,7 +88,7 @@ export const memories = pgTable("memories", {
 });
 
 export const insertMemorySchema = createInsertSchema(memories).omit({ id: true, createdAt: true });
-export type InsertMemory = z.infer<typeof insertMemorySchema>;
+export type InsertMemory = typeof memories.$inferInsert;
 export type Memory = typeof memories.$inferSelect;
 
 // User Settings (non-secret)
@@ -121,7 +121,7 @@ export interface NovaMood {
 }
 
 export const insertUserSettingsSchema = createInsertSchema(userSettings).omit({ id: true, updatedAt: true });
-export type InsertUserSettings = z.infer<typeof insertUserSettingsSchema>;
+export type InsertUserSettings = typeof userSettings.$inferInsert;
 export type UserSettings = typeof userSettings.$inferSelect;
 
 // Sync Status (for diagnostics)

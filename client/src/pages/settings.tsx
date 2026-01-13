@@ -1,17 +1,17 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { useLocation } from 'wouter';
+import { useLocation, Link } from 'wouter';
 import {
   Settings as SettingsIcon,
   ArrowLeft,
-  Key,
   Globe,
   Cpu,
   Download,
   Upload,
   Check,
-  Eye,
-  EyeOff,
+  LogOut,
+  Activity,
+  Server,
 } from 'lucide-react';
 import { Sidebar } from '@/components/nova/Sidebar';
 import { Button } from '@/components/ui/button';
@@ -35,6 +35,7 @@ interface SettingsPageProps {
   onUpdateSettings: (updates: Partial<NovaSettings>) => void;
   onExport: () => string;
   onImport: (json: string) => boolean;
+  onLogout?: () => void;
 }
 
 const providers = [
@@ -56,10 +57,10 @@ export default function SettingsPage({
   onUpdateSettings,
   onExport,
   onImport,
+  onLogout,
 }: SettingsPageProps) {
   const [, navigate] = useLocation();
   const { toast } = useToast();
-  const [showKey, setShowKey] = useState(false);
   const [localSettings, setLocalSettings] = useState(settings);
   const [hasChanges, setHasChanges] = useState(false);
 
@@ -208,46 +209,12 @@ export default function SettingsPage({
                     />
                   </div>
                 )}
-              </div>
-            </motion.section>
 
-            <motion.section
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="space-y-4"
-            >
-              <h2 className="font-display text-lg font-semibold flex items-center gap-2">
-                <Key className="w-5 h-5 text-purple-400" />
-                Authentication
-              </h2>
-
-              <div className="p-4 rounded-xl bg-card border border-border/50 space-y-4">
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground mb-2 block">
-                    API Key
-                  </label>
-                  <div className="relative">
-                    <Input
-                      type={showKey ? 'text' : 'password'}
-                      value={localSettings.apiKey}
-                      onChange={(e) => handleChange({ apiKey: e.target.value })}
-                      placeholder="sk-..."
-                      className="pr-10"
-                      data-testid="input-api-key"
-                    />
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
-                      onClick={() => setShowKey(!showKey)}
-                    >
-                      {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </Button>
+                <div className="p-3 rounded-lg bg-muted/30 border border-border/30">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Server className="w-4 h-4" />
+                    <span>API key is configured server-side for security</span>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Your API key is stored locally in your browser and never sent to our servers.
-                  </p>
                 </div>
               </div>
             </motion.section>
@@ -255,7 +222,7 @@ export default function SettingsPage({
             <motion.section
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
+              transition={{ delay: 0.1 }}
               className="space-y-4"
             >
               <h2 className="font-display text-lg font-semibold flex items-center gap-2">
@@ -289,18 +256,13 @@ export default function SettingsPage({
                     data-testid="input-model"
                   />
                 )}
-                {!localSettings.apiKey && (
-                  <p className="text-xs text-amber-500 mt-2">
-                    Demo mode active. Add an API key to use real AI responses.
-                  </p>
-                )}
               </div>
             </motion.section>
 
             <motion.section
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
+              transition={{ delay: 0.2 }}
               className="space-y-4"
             >
               <h2 className="font-display text-lg font-semibold">Data Management</h2>
@@ -348,12 +310,62 @@ export default function SettingsPage({
             <motion.section
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="space-y-4"
+            >
+              <h2 className="font-display text-lg font-semibold flex items-center gap-2">
+                <Activity className="w-5 h-5 text-purple-400" />
+                System
+              </h2>
+
+              <div className="p-4 rounded-xl bg-card border border-border/50 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-medium text-sm">Diagnostics</h3>
+                    <p className="text-xs text-muted-foreground">
+                      View sync status, schema version, and system health
+                    </p>
+                  </div>
+                  <Link href="/diagnostics">
+                    <Button variant="outline" data-testid="button-diagnostics">
+                      View Diagnostics
+                    </Button>
+                  </Link>
+                </div>
+
+                {onLogout && (
+                  <>
+                    <div className="border-t border-border/30" />
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="font-medium text-sm">Sign Out</h3>
+                        <p className="text-xs text-muted-foreground">
+                          Log out of your Nova Companion account
+                        </p>
+                      </div>
+                      <Button 
+                        variant="outline" 
+                        onClick={onLogout}
+                        className="text-destructive hover:text-destructive"
+                        data-testid="button-logout"
+                      >
+                        <LogOut className="w-4 h-4 mr-1" /> Sign Out
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </motion.section>
+
+            <motion.section
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4 }}
               className="pb-8"
             >
               <div className="p-4 rounded-xl bg-muted/30 border border-border/30 text-center">
                 <p className="text-xs text-muted-foreground">
-                  Nova Companion v1.0.0 • All data stored locally in your browser
+                  Nova Companion v1.0.0 • Data synced to PostgreSQL
                 </p>
               </div>
             </motion.section>

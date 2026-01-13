@@ -1,21 +1,63 @@
-import { useState, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useNovaState } from "@/hooks/useNovaState";
+import { api } from "@/lib/api";
+import LoginPage from "@/pages/login";
 import Onboarding from "@/pages/onboarding";
 import ChatPage from "@/pages/chat";
 import VersionsPage from "@/pages/versions";
 import MemoryPage from "@/pages/memory";
 import BoundariesPage from "@/pages/boundaries";
 import SettingsPage from "@/pages/settings";
+import DiagnosticsPage from "@/pages/diagnostics";
 import NotFound from "@/pages/not-found";
 
+type AuthState = 'loading' | 'setup' | 'login' | 'authenticated';
+
 function NovaApp() {
+  const [authState, setAuthState] = useState<AuthState>('loading');
   const nova = useNovaState();
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
+
+  useEffect(() => {
+    checkAuth();
+  }, []);
+
+  const checkAuth = async () => {
+    try {
+      const [status, me] = await Promise.all([
+        api.auth.status(),
+        api.auth.me(),
+      ]);
+
+      if (status.needsSetup) {
+        setAuthState('setup');
+      } else if (me.authenticated) {
+        setAuthState('authenticated');
+      } else {
+        setAuthState('login');
+      }
+    } catch (error) {
+      setAuthState('setup');
+    }
+  };
+
+  const handleAuthSuccess = () => {
+    setAuthState('authenticated');
+  };
+
+  const handleLogout = async () => {
+    try {
+      await api.auth.logout();
+      setAuthState('login');
+    } catch (error) {
+      console.error('Logout failed', error);
+    }
+  };
 
   const handleNewConversation = useCallback((versionId: string) => {
     return nova.createConversation(versionId, 'New Conversation');
@@ -37,13 +79,23 @@ function NovaApp() {
     }
   }, [nova]);
 
-  if (!nova.state.onboardingComplete) {
+  if (authState === 'loading') {
     return (
-      <Onboarding
-        onComplete={nova.completeOnboarding}
-        onUpdateSettings={nova.updateSettings}
-      />
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-8 h-8 border-2 border-purple-500/30 border-t-purple-500 rounded-full animate-spin" />
+          <p className="text-sm text-muted-foreground">Loading Nova...</p>
+        </div>
+      </div>
     );
+  }
+
+  if (authState === 'setup' || authState === 'login') {
+    return <LoginPage isSetup={authState === 'setup'} onSuccess={handleAuthSuccess} />;
+  }
+
+  if (!nova.state.onboardingComplete) {
+    return <Onboarding onComplete={nova.completeOnboarding} />;
   }
 
   return (
@@ -101,6 +153,13 @@ function NovaApp() {
           onUpdateSettings={nova.updateSettings}
           onExport={nova.exportData}
           onImport={nova.importData}
+          onLogout={handleLogout}
+        />
+      </Route>
+      <Route path="/diagnostics">
+        <DiagnosticsPage
+          conversations={nova.state.conversations}
+          versions={nova.state.versions}
         />
       </Route>
       <Route component={NotFound} />

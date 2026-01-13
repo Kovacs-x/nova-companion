@@ -6,14 +6,15 @@ import { ChatMessage, TypingIndicator } from '@/components/nova/ChatMessage';
 import { Composer } from '@/components/nova/Composer';
 import { NovaAvatar } from '@/components/nova/NovaAvatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Conversation, NovaVersion, NovaMood, Message } from '@/lib/types';
+import { Conversation, NovaVersion, NovaMood, NovaSettings } from '@/lib/types';
+import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
 interface ChatPageProps {
   conversations: Conversation[];
   versions: NovaVersion[];
   currentMood: NovaMood;
-  settings: { apiKey: string };
+  settings: NovaSettings;
   onNewConversation: (versionId: string) => Conversation;
   onSelectConversation: (id: string) => void;
   onSendMessage: (conversationId: string, content: string) => void;
@@ -21,14 +22,6 @@ interface ChatPageProps {
   currentConversationId: string | null;
   setCurrentConversationId: (id: string | null) => void;
 }
-
-const MOCK_RESPONSES = [
-  "I'm here with you. What's on your mind?",
-  "That's a thoughtful observation. Tell me more about how that makes you feel.",
-  "I appreciate you sharing that with me. It sounds like this is important to you.",
-  "I'm curious about what led you to think about this. Would you like to explore it together?",
-  "Thank you for trusting me with this. I'm listening.",
-];
 
 export default function ChatPage({
   conversations,
@@ -73,26 +66,41 @@ export default function ChatPage({
   };
 
   const handleSend = async (content: string) => {
-    if (!currentConversationId) {
+    let targetConvId = currentConversationId;
+    
+    if (!targetConvId) {
       const conv = onNewConversation(versions[0].id);
       setCurrentConversationId(conv.id);
-      setTimeout(() => {
-        onSendMessage(conv.id, content);
-        simulateResponse(conv.id);
-      }, 50);
-    } else {
-      onSendMessage(currentConversationId, content);
-      simulateResponse(currentConversationId);
+      targetConvId = conv.id;
     }
-  };
 
-  const simulateResponse = async (convId: string) => {
+    onSendMessage(targetConvId, content);
+    
+    const version = versions.find(v => v.id === (currentConversation?.versionId || versions[0].id));
+    
     setIsTyping(true);
-    await new Promise(resolve => setTimeout(resolve, 1500 + Math.random() * 1000));
-    setIsTyping(false);
-
-    const response = MOCK_RESPONSES[Math.floor(Math.random() * MOCK_RESPONSES.length)];
-    onSendMessage(convId, response);
+    
+    try {
+      const conv = conversations.find(c => c.id === targetConvId);
+      const messages = conv?.messages || [];
+      
+      const response = await api.chat.complete(
+        [...messages, { role: 'user', content }],
+        settings.modelName,
+        version?.systemPrompt || ''
+      );
+      
+      setIsTyping(false);
+      
+      const assistantMessage = response.choices?.[0]?.message?.content || 
+        "I'm here with you. What's on your mind?";
+      
+      onSendMessage(targetConvId, assistantMessage);
+    } catch (error) {
+      setIsTyping(false);
+      console.error('Chat error:', error);
+      onSendMessage(targetConvId, "I apologize, but I encountered an issue. Let's try again.");
+    }
   };
 
   return (
