@@ -5,7 +5,6 @@ import { NovaPresence } from '@/components/nova/NovaPresence';
 import { ChatMessage, TypingIndicator } from '@/components/nova/ChatMessage';
 import { Composer } from '@/components/nova/Composer';
 import { NovaAvatar } from '@/components/nova/NovaAvatar';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Conversation, NovaVersion, NovaMood, NovaSettings } from '@/lib/types';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
@@ -38,18 +37,41 @@ export default function ChatPage({
   const [isTyping, setIsTyping] = useState(false);
   const [showVersionPicker, setShowVersionPicker] = useState(false);
   const [isDemoMode, setIsDemoMode] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const [userHasScrolledUp, setUserHasScrolledUp] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const currentConversation = conversations.find(c => c.id === currentConversationId);
   const currentVersion = currentConversation
     ? versions.find(v => v.id === currentConversation.versionId)
     : versions[0];
 
+  // Track if user has scrolled up
+  const handleScroll = () => {
+    if (!scrollContainerRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
+    const isAtBottom = scrollHeight - scrollTop - clientHeight < 100;
+    setUserHasScrolledUp(!isAtBottom);
+  };
+
+  // Auto-scroll to bottom when messages change (unless user scrolled up)
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    if (!userHasScrolledUp && messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [currentConversation?.messages]);
+  }, [currentConversation?.messages, userHasScrolledUp]);
+
+  // Also scroll when typing indicator appears
+  useEffect(() => {
+    if (isTyping && !userHasScrolledUp && messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [isTyping, userHasScrolledUp]);
+
+  // Reset scroll state when conversation changes
+  useEffect(() => {
+    setUserHasScrolledUp(false);
+  }, [currentConversationId]);
 
   const handleNewConversation = async () => {
     if (versions.length === 1) {
@@ -166,7 +188,11 @@ export default function ChatPage({
             </header>
 
             <div className="flex-1 flex min-h-0">
-              <ScrollArea ref={scrollRef} className="flex-1 px-4 py-6">
+              <div 
+                ref={scrollContainerRef}
+                onScroll={handleScroll}
+                className="flex-1 px-4 py-6 overflow-y-auto"
+              >
                 <div className="space-y-4 pb-4">
                   {currentConversation.messages.map((message, i) => (
                     <ChatMessage
@@ -178,8 +204,9 @@ export default function ChatPage({
                   <AnimatePresence>
                     {isTyping && <TypingIndicator />}
                   </AnimatePresence>
+                  <div ref={messagesEndRef} />
                 </div>
-              </ScrollArea>
+              </div>
 
               <aside className="hidden xl:block w-72 p-4 border-l border-border/30">
                 <NovaPresence
