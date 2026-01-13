@@ -461,7 +461,26 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const apiKey = process.env.OPENAI_API_KEY;
       const messages = req.body.messages || [];
       const userMessage = messages[messages.length - 1]?.content || '';
-      const isNewConversation = messages.length <= 1;
+      
+      // Count only user messages to detect new conversations (system messages don't count)
+      const userMessages = messages.filter((m: any) => m.role === 'user');
+      const isNewConversation = userMessages.length <= 1;
+
+      // Stage 1: Short-circuit simple greetings in new conversations (both demo and API modes)
+      if (isNewConversation && isSimpleGreeting(userMessage)) {
+        return res.json({
+          mock: !apiKey,
+          stage1Greeting: true,
+          choices: [
+            {
+              message: {
+                role: "assistant",
+                content: STAGE1_GREETING_RESPONSES[Math.floor(Math.random() * STAGE1_GREETING_RESPONSES.length)],
+              },
+            },
+          ],
+        });
+      }
 
       if (!apiKey) {
         return res.json({
@@ -470,7 +489,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
             {
               message: {
                 role: "assistant",
-                content: getStage1Response(userMessage, isNewConversation),
+                content: STAGE1_DEMO_RESPONSES[Math.floor(Math.random() * STAGE1_DEMO_RESPONSES.length)],
               },
             },
           ],
@@ -610,9 +629,3 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   return httpServer;
 }
 
-function getStage1Response(userMessage: string, isNewConversation: boolean): string {
-  if (isNewConversation && isSimpleGreeting(userMessage)) {
-    return STAGE1_GREETING_RESPONSES[Math.floor(Math.random() * STAGE1_GREETING_RESPONSES.length)];
-  }
-  return STAGE1_DEMO_RESPONSES[Math.floor(Math.random() * STAGE1_DEMO_RESPONSES.length)];
-}
