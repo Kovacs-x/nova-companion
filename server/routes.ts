@@ -84,6 +84,11 @@ const STAGE1_DEMO_RESPONSES = [
 ];
 
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
+  // Trust proxy for production (required for secure cookies behind reverse proxy)
+  if (process.env.NODE_ENV === "production") {
+    app.set("trust proxy", 1);
+  }
+
   // Session setup
   app.use(
     session({
@@ -93,6 +98,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       cookie: {
         secure: process.env.NODE_ENV === "production",
         httpOnly: true,
+        sameSite: "lax",
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
       },
     })

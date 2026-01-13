@@ -5,7 +5,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useNovaState } from "@/hooks/useNovaState";
-import { api } from "@/lib/api";
+import { api, SESSION_EXPIRED_EVENT } from "@/lib/api";
 import LoginPage from "@/pages/login";
 import Onboarding from "@/pages/onboarding";
 import ChatPage from "@/pages/chat";
@@ -18,14 +18,42 @@ import NotFound from "@/pages/not-found";
 
 type AuthState = 'loading' | 'setup' | 'login' | 'authenticated';
 
+function SessionExpiredBanner({ onRefresh }: { onRefresh: () => void }) {
+  return (
+    <div className="fixed top-0 left-0 right-0 z-[100] bg-red-500/95 text-white px-4 py-3 text-center shadow-lg backdrop-blur-sm">
+      <p className="text-sm font-medium">
+        Session expired. Please refresh to continue.
+        <button 
+          onClick={onRefresh}
+          className="ml-3 px-3 py-1 bg-white/20 hover:bg-white/30 rounded-md text-sm font-medium transition-colors"
+          data-testid="button-session-refresh"
+        >
+          Refresh Now
+        </button>
+      </p>
+    </div>
+  );
+}
+
 function NovaApp() {
   const [authState, setAuthState] = useState<AuthState>('loading');
+  const [sessionExpired, setSessionExpired] = useState(false);
   const nova = useNovaState();
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [hasAutoSelected, setHasAutoSelected] = useState(false);
 
   useEffect(() => {
     checkAuth();
+  }, []);
+
+  // Listen for session expired events
+  useEffect(() => {
+    const handleSessionExpired = () => {
+      setSessionExpired(true);
+    };
+    
+    window.addEventListener(SESSION_EXPIRED_EVENT, handleSessionExpired);
+    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, handleSessionExpired);
   }, []);
 
   useEffect(() => {
@@ -109,8 +137,12 @@ function NovaApp() {
     return <Onboarding onComplete={nova.completeOnboarding} />;
   }
 
+  const handleRefresh = () => window.location.reload();
+
   return (
-    <Switch>
+    <>
+      {sessionExpired && <SessionExpiredBanner onRefresh={handleRefresh} />}
+      <Switch>
       <Route path="/">
         <ChatPage
           conversations={nova.state.conversations}
@@ -175,6 +207,7 @@ function NovaApp() {
       </Route>
       <Route component={NotFound} />
     </Switch>
+    </>
   );
 }
 

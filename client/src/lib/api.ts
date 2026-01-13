@@ -1,5 +1,8 @@
 const API_BASE = '/api';
 
+// Session expired event for UI handling
+export const SESSION_EXPIRED_EVENT = 'session-expired';
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, {
     ...options,
@@ -11,6 +14,13 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   });
 
   if (!response.ok) {
+    // Handle 401 Unauthorized - session expired
+    if (response.status === 401) {
+      // Dispatch event for UI to handle
+      window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT));
+      throw new Error('Session expired. Please refresh the page.');
+    }
+    
     const error = await response.json().catch(() => ({ error: 'Request failed' }));
     throw new Error(error.error || 'Request failed');
   }
