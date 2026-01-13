@@ -155,39 +155,20 @@ export function useNovaState() {
   }, []);
 
   const createConversation = useCallback(async (versionId: string, title?: string) => {
-    try {
-      const created = await api.conversations.create(versionId, title);
-      const newConv: Conversation = {
-        ...created,
-        messages: [],
-        createdAt: created.createdAt,
-        updatedAt: created.updatedAt,
-      };
-      
-      setState(prev => ({
-        ...prev,
-        conversations: [newConv, ...prev.conversations],
-      }));
+    const created = await api.conversations.create(versionId, title);
+    const newConv: Conversation = {
+      ...created,
+      messages: [],
+      createdAt: created.createdAt,
+      updatedAt: created.updatedAt,
+    };
+    
+    setState(prev => ({
+      ...prev,
+      conversations: [newConv, ...prev.conversations],
+    }));
 
-      return newConv;
-    } catch (error) {
-      console.error('Failed to create conversation on server:', error);
-      const localConv: Conversation = {
-        id: uuidv4(),
-        title: title || 'New Conversation',
-        versionId,
-        messages: [],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      
-      setState(prev => ({
-        ...prev,
-        conversations: [localConv, ...prev.conversations],
-      }));
-
-      return localConv;
-    }
+    return newConv;
   }, []);
 
   const updateConversation = useCallback(async (id: string, updates: Partial<Conversation>) => {
@@ -216,7 +197,7 @@ export function useNovaState() {
     }));
   }, []);
 
-  const addMessage = useCallback((conversationId: string, message: Omit<Message, 'id' | 'timestamp'>) => {
+  const addMessage = useCallback(async (conversationId: string, message: Omit<Message, 'id' | 'timestamp'>) => {
     const newMessage: Message = {
       ...message,
       id: uuidv4(),
@@ -232,9 +213,11 @@ export function useNovaState() {
       ),
     }));
 
-    api.conversations.addMessage(conversationId, message.role, message.content).catch(error => {
+    try {
+      await api.conversations.addMessage(conversationId, message.role, message.content);
+    } catch (error) {
       console.error('Failed to save message to server:', error);
-    });
+    }
 
     return newMessage;
   }, []);

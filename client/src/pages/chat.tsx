@@ -17,7 +17,7 @@ interface ChatPageProps {
   settings: NovaSettings;
   onNewConversation: (versionId: string) => Promise<Conversation>;
   onSelectConversation: (id: string) => void;
-  onSendMessage: (conversationId: string, content: string) => void;
+  onSendMessage: (conversationId: string, content: string, role?: 'user' | 'assistant') => Promise<void>;
   onExport: () => void;
   currentConversationId: string | null;
   setCurrentConversationId: (id: string | null) => void;
@@ -68,22 +68,26 @@ export default function ChatPage({
     let targetConvId = currentConversationId;
     
     if (!targetConvId) {
-      const conv = await onNewConversation(versions[0].id);
-      targetConvId = conv.id;
+      try {
+        const conv = await onNewConversation(versions[0].id);
+        targetConvId = conv.id;
+      } catch (error) {
+        console.error('Failed to create conversation:', error);
+        return;
+      }
     }
 
-    onSendMessage(targetConvId, content);
+    const conv = conversations.find(c => c.id === targetConvId);
+    const version = versions.find(v => v.id === (conv?.versionId || versions[0].id));
+    const currentMessages = conv?.messages || [];
     
-    const version = versions.find(v => v.id === (currentConversation?.versionId || versions[0].id));
+    await onSendMessage(targetConvId, content, 'user');
     
     setIsTyping(true);
     
     try {
-      const conv = conversations.find(c => c.id === targetConvId);
-      const messages = conv?.messages || [];
-      
       const response = await api.chat.complete(
-        [...messages, { role: 'user', content }],
+        [...currentMessages, { role: 'user', content }],
         settings.modelName,
         version?.systemPrompt || ''
       );
@@ -97,11 +101,11 @@ export default function ChatPage({
       const assistantMessage = response.choices?.[0]?.message?.content || 
         "I'm here with you. What's on your mind?";
       
-      onSendMessage(targetConvId, assistantMessage);
+      await onSendMessage(targetConvId, assistantMessage, 'assistant');
     } catch (error) {
       setIsTyping(false);
       console.error('Chat error:', error);
-      onSendMessage(targetConvId, "I apologize, but I encountered an issue. Let's try again.");
+      await onSendMessage(targetConvId, "I apologize, but I encountered an issue. Let's try again.", 'assistant');
     }
   };
 

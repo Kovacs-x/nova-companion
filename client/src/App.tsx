@@ -22,10 +22,19 @@ function NovaApp() {
   const [authState, setAuthState] = useState<AuthState>('loading');
   const nova = useNovaState();
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
+  const [hasAutoSelected, setHasAutoSelected] = useState(false);
 
   useEffect(() => {
     checkAuth();
   }, []);
+
+  useEffect(() => {
+    if (authState === 'authenticated' && !hasAutoSelected && nova.isReady && nova.state.conversations.length > 0 && !currentConversationId) {
+      const latest = nova.state.conversations[0];
+      setCurrentConversationId(latest.id);
+      setHasAutoSelected(true);
+    }
+  }, [authState, hasAutoSelected, nova.isReady, nova.state.conversations, currentConversationId]);
 
   const checkAuth = async () => {
     try {
@@ -39,7 +48,6 @@ function NovaApp() {
       } else if (me.authenticated) {
         setAuthState('authenticated');
         await nova.loadData();
-        autoSelectConversation();
       } else {
         setAuthState('login');
       }
@@ -48,17 +56,10 @@ function NovaApp() {
     }
   };
 
-  const autoSelectConversation = () => {
-    if (nova.state.conversations.length > 0) {
-      const latest = nova.state.conversations[0];
-      setCurrentConversationId(latest.id);
-    }
-  };
-
   const handleAuthSuccess = async () => {
     setAuthState('authenticated');
+    setHasAutoSelected(false);
     await nova.loadData();
-    autoSelectConversation();
   };
 
   const handleLogout = async () => {
@@ -76,19 +77,16 @@ function NovaApp() {
     return conv;
   }, [nova]);
 
-  const handleSendMessage = useCallback((conversationId: string, content: string) => {
-    const conv = nova.state.conversations.find(c => c.id === conversationId);
-    if (!conv) return;
-
-    const isUserMessage = conv.messages.length % 2 === 0;
-    nova.addMessage(conversationId, {
-      role: isUserMessage ? 'user' : 'assistant',
+  const handleSendMessage = useCallback(async (conversationId: string, content: string, role: 'user' | 'assistant' = 'user') => {
+    await nova.addMessage(conversationId, {
+      role,
       content,
     });
 
-    if (conv.messages.length === 0) {
+    const conv = nova.state.conversations.find(c => c.id === conversationId);
+    if (conv && conv.messages.length === 0 && role === 'user') {
       const title = content.slice(0, 40) + (content.length > 40 ? '...' : '');
-      nova.updateConversation(conversationId, { title });
+      await nova.updateConversation(conversationId, { title });
     }
   }, [nova]);
 
