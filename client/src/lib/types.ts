@@ -54,10 +54,13 @@ export interface Boundary {
   enabled: boolean;
 }
 
+export type VoiceMode = "quiet" | "engaged" | "mythic" | "blunt";
+
 export interface NovaSettings {
   provider: string;
   apiEndpoint: string;
   modelName: string;
+  voiceMode: VoiceMode;
   boundaries: Boundary[];
 }
 
@@ -138,6 +141,7 @@ export const DEFAULT_STATE: NovaState = {
     provider: 'openai',
     apiEndpoint: 'https://api.openai.com/v1',
     modelName: 'gpt-4',
+    voiceMode: 'quiet',
     boundaries: [],
   },
   currentMood: {

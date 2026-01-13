@@ -91,6 +91,9 @@ export const insertMemorySchema = createInsertSchema(memories).omit({ id: true, 
 export type InsertMemory = typeof memories.$inferInsert;
 export type Memory = typeof memories.$inferSelect;
 
+// Voice modes - affects style, not core identity
+export type VoiceMode = "quiet" | "engaged" | "mythic" | "blunt";
+
 // User Settings (non-secret)
 export const userSettings = pgTable("user_settings", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -98,6 +101,7 @@ export const userSettings = pgTable("user_settings", {
   provider: text("provider").notNull().default("openai"),
   apiEndpoint: text("api_endpoint").notNull().default("https://api.openai.com/v1"),
   modelName: text("model_name").notNull().default("gpt-4"),
+  voiceMode: text("voice_mode").$type<VoiceMode>().notNull().default("quiet"),
   boundaries: jsonb("boundaries").$type<Boundary[]>().notNull().default([]),
   currentMood: jsonb("current_mood").$type<NovaMood>().notNull().default({
     emotion: "calm",
