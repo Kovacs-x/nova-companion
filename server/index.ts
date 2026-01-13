@@ -60,10 +60,6 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  // Ensure database schema is ready
-  const { ensureSchema } = await import("./migrate");
-  await ensureSchema();
-
   await registerRoutes(httpServer, app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
@@ -97,6 +93,14 @@ app.use((req, res, next) => {
     },
     () => {
       log(`serving on port ${port}`);
+      
+      // Ensure database schema is ready after server starts
+      // This runs in background to not block the health check
+      import("./migrate").then(({ ensureSchema }) => {
+        ensureSchema().catch((error) => {
+          console.error("[migrate] Schema validation failed:", error);
+        });
+      });
     },
   );
 })();
