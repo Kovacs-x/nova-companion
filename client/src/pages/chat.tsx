@@ -38,20 +38,31 @@ export default function ChatPage({
   const [showVersionPicker, setShowVersionPicker] = useState(false);
   const [isDemoMode, setIsDemoMode] = useState(false);
   const [userHasScrolledUp, setUserHasScrolledUp] = useState(false);
+  const [isScrolling, setIsScrolling] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const currentConversation = conversations.find(c => c.id === currentConversationId);
   const currentVersion = currentConversation
     ? versions.find(v => v.id === currentConversation.versionId)
     : versions[0];
 
-  // Track if user has scrolled up
+  // Track if user has scrolled up and manage scrolling state for auto-hide scrollbar
   const handleScroll = () => {
     if (!scrollContainerRef.current) return;
     const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
     const isAtBottom = scrollHeight - scrollTop - clientHeight < 100;
     setUserHasScrolledUp(!isAtBottom);
+
+    // Show scrollbar while scrolling
+    setIsScrolling(true);
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current);
+    }
+    scrollTimeoutRef.current = setTimeout(() => {
+      setIsScrolling(false);
+    }, 900);
   };
 
   // Auto-scroll to bottom when messages change (unless user scrolled up)
@@ -191,7 +202,10 @@ export default function ChatPage({
               <div 
                 ref={scrollContainerRef}
                 onScroll={handleScroll}
-                className="flex-1 px-4 py-6 overflow-y-auto"
+                className={cn(
+                  "flex-1 px-4 py-6 overflow-y-auto chat-scroll-area",
+                  isScrolling && "scrolling"
+                )}
               >
                 <div className="space-y-4 pb-4">
                   {currentConversation.messages.map((message, i) => (

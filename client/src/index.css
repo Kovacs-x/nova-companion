@@ -174,6 +174,40 @@
     background: hsl(var(--muted-foreground));
   }
 
+  .chat-scroll-area {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+  }
+
+  .chat-scroll-area:hover,
+  .chat-scroll-area.scrolling {
+    scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+  }
+
+  .chat-scroll-area::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .chat-scroll-area::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .chat-scroll-area::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0);
+    border-radius: 999px;
+    transition: background 0.2s ease;
+  }
+
+  .chat-scroll-area:hover::-webkit-scrollbar-thumb,
+  .chat-scroll-area.scrolling::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.22);
+  }
+
+  .chat-scroll-area:hover::-webkit-scrollbar-thumb:hover,
+  .chat-scroll-area.scrolling::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.35);
+  }
+
   .grain::before {
     content: "";
     position: absolute;
