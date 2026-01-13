@@ -19,17 +19,35 @@ export function useNovaState() {
 
       const conversationsWithMessages = await Promise.all(
         conversations.map(async (conv: any) => {
+          let messages: any[] = [];
+          
           try {
             const fullConv = await api.conversations.get(conv.id);
-            return {
-              ...conv,
-              messages: fullConv.messages || [],
-              createdAt: conv.createdAt,
-              updatedAt: conv.updatedAt,
-            };
+            messages = fullConv.messages || [];
           } catch {
-            return { ...conv, messages: [] };
+            // If fetch fails, use empty messages array
+            messages = [];
           }
+          
+          // Always regenerate title using current logic to fix legacy greeting-based titles
+          const regeneratedTitle = generateConversationTitle(messages, conv.createdAt);
+          
+          // Update server if title changed (only if we have a valid conversation)
+          if (regeneratedTitle !== conv.title) {
+            try {
+              await api.conversations.update(conv.id, { title: regeneratedTitle });
+            } catch (error) {
+              console.error('Failed to update conversation title:', error);
+            }
+          }
+          
+          return {
+            ...conv,
+            title: regeneratedTitle,
+            messages,
+            createdAt: conv.createdAt,
+            updatedAt: conv.updatedAt,
+          };
         })
       );
 
