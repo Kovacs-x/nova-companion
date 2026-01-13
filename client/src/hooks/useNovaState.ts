@@ -154,33 +154,40 @@ export function useNovaState() {
     }));
   }, []);
 
-  const createConversation = useCallback((versionId: string, title?: string) => {
-    const localConv: Conversation = {
-      id: uuidv4(),
-      title: title || 'New Conversation',
-      versionId,
-      messages: [],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    
-    setState(prev => ({
-      ...prev,
-      conversations: [localConv, ...prev.conversations],
-    }));
-
-    api.conversations.create(versionId, title).then(created => {
+  const createConversation = useCallback(async (versionId: string, title?: string) => {
+    try {
+      const created = await api.conversations.create(versionId, title);
+      const newConv: Conversation = {
+        ...created,
+        messages: [],
+        createdAt: created.createdAt,
+        updatedAt: created.updatedAt,
+      };
+      
       setState(prev => ({
         ...prev,
-        conversations: prev.conversations.map(c =>
-          c.id === localConv.id ? { ...c, id: created.id } : c
-        ),
+        conversations: [newConv, ...prev.conversations],
       }));
-    }).catch(error => {
-      console.error('Failed to create conversation on server:', error);
-    });
 
-    return localConv;
+      return newConv;
+    } catch (error) {
+      console.error('Failed to create conversation on server:', error);
+      const localConv: Conversation = {
+        id: uuidv4(),
+        title: title || 'New Conversation',
+        versionId,
+        messages: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      
+      setState(prev => ({
+        ...prev,
+        conversations: [localConv, ...prev.conversations],
+      }));
+
+      return localConv;
+    }
   }, []);
 
   const updateConversation = useCallback(async (id: string, updates: Partial<Conversation>) => {

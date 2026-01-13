@@ -15,7 +15,7 @@ interface ChatPageProps {
   versions: NovaVersion[];
   currentMood: NovaMood;
   settings: NovaSettings;
-  onNewConversation: (versionId: string) => Conversation;
+  onNewConversation: (versionId: string) => Promise<Conversation>;
   onSelectConversation: (id: string) => void;
   onSendMessage: (conversationId: string, content: string) => void;
   onExport: () => void;
@@ -37,6 +37,7 @@ export default function ChatPage({
 }: ChatPageProps) {
   const [isTyping, setIsTyping] = useState(false);
   const [showVersionPicker, setShowVersionPicker] = useState(false);
+  const [isDemoMode, setIsDemoMode] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const currentConversation = conversations.find(c => c.id === currentConversationId);
@@ -50,18 +51,16 @@ export default function ChatPage({
     }
   }, [currentConversation?.messages]);
 
-  const handleNewConversation = () => {
+  const handleNewConversation = async () => {
     if (versions.length === 1) {
-      const conv = onNewConversation(versions[0].id);
-      setCurrentConversationId(conv.id);
+      await onNewConversation(versions[0].id);
     } else {
       setShowVersionPicker(true);
     }
   };
 
-  const handleSelectVersion = (versionId: string) => {
-    const conv = onNewConversation(versionId);
-    setCurrentConversationId(conv.id);
+  const handleSelectVersion = async (versionId: string) => {
+    await onNewConversation(versionId);
     setShowVersionPicker(false);
   };
 
@@ -69,8 +68,7 @@ export default function ChatPage({
     let targetConvId = currentConversationId;
     
     if (!targetConvId) {
-      const conv = onNewConversation(versions[0].id);
-      setCurrentConversationId(conv.id);
+      const conv = await onNewConversation(versions[0].id);
       targetConvId = conv.id;
     }
 
@@ -91,6 +89,10 @@ export default function ChatPage({
       );
       
       setIsTyping(false);
+      
+      if (response.mock) {
+        setIsDemoMode(true);
+      }
       
       const assistantMessage = response.choices?.[0]?.message?.content || 
         "I'm here with you. What's on your mind?";
@@ -140,12 +142,21 @@ export default function ChatPage({
           </div>
         ) : (
           <>
-            <header className="flex items-center justify-between px-6 py-4 border-b border-border/30 bg-card/30 backdrop-blur-sm z-10">
-              <div className="flex items-center gap-3 ml-12 lg:ml-0">
-                <NovaAvatar size="sm" />
-                <div>
-                  <h2 className="font-medium text-sm">{currentConversation.title}</h2>
-                  <span className="text-xs text-purple-400">{currentVersion?.name}</span>
+            <header className="flex flex-col border-b border-border/30 bg-card/30 backdrop-blur-sm z-10">
+              {isDemoMode && (
+                <div className="px-6 py-2 bg-purple-500/10 border-b border-purple-500/20">
+                  <p className="text-xs text-purple-300 text-center">
+                    <span className="font-medium">Demo mode:</span> Connect your API key in Settings to use real AI responses
+                  </p>
+                </div>
+              )}
+              <div className="flex items-center justify-between px-6 py-4">
+                <div className="flex items-center gap-3 ml-12 lg:ml-0">
+                  <NovaAvatar size="sm" />
+                  <div>
+                    <h2 className="font-medium text-sm">{currentConversation.title}</h2>
+                    <span className="text-xs text-purple-400">{currentVersion?.name}</span>
+                  </div>
                 </div>
               </div>
             </header>

@@ -38,7 +38,8 @@ function NovaApp() {
         setAuthState('setup');
       } else if (me.authenticated) {
         setAuthState('authenticated');
-        nova.loadData();
+        await nova.loadData();
+        autoSelectConversation();
       } else {
         setAuthState('login');
       }
@@ -47,9 +48,17 @@ function NovaApp() {
     }
   };
 
-  const handleAuthSuccess = () => {
+  const autoSelectConversation = () => {
+    if (nova.state.conversations.length > 0) {
+      const latest = nova.state.conversations[0];
+      setCurrentConversationId(latest.id);
+    }
+  };
+
+  const handleAuthSuccess = async () => {
     setAuthState('authenticated');
-    nova.loadData();
+    await nova.loadData();
+    autoSelectConversation();
   };
 
   const handleLogout = async () => {
@@ -61,8 +70,10 @@ function NovaApp() {
     }
   };
 
-  const handleNewConversation = useCallback((versionId: string) => {
-    return nova.createConversation(versionId, 'New Conversation');
+  const handleNewConversation = useCallback(async (versionId: string) => {
+    const conv = await nova.createConversation(versionId, 'New Conversation');
+    setCurrentConversationId(conv.id);
+    return conv;
   }, [nova]);
 
   const handleSendMessage = useCallback((conversationId: string, content: string) => {
