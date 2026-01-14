@@ -478,7 +478,61 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       // Helper function to call the model
       // Note: sysPrompt is the enhanced system prompt from voice engine
       const callModel = async (msgs: Array<{ role: string; content: string }>, sysPrompt: string): Promise<string> => {
-        if (!apiKey) {
+        // -------------------- Silence & Pause Rules (Stage 1) --------------------
+        const getLastUserText = (msgs: Array<{ role: string; content: string }>) => {
+          for (let i = msgs.length - 1; i >= 0; i--) {
+            if (msgs[i]?.role === "user") return (msgs[i].content ?? "").trim();
+          }
+          return "";
+        };
+
+        const isEllipsisOnly = (text: string) => {
+          const t = text.trim();
+          return t === "..." || t === "…" || /^[.\u2026\s]+$/.test(t);
+        };
+
+        const wordCount = (text: string) =>
+          text.trim().split(/\s+/).filter(Boolean).length;
+
+        const looksLikeQuestion = (text: string) => {
+          const t = text.trim();
+          if (t.includes("?")) return true;
+          return /^(what|why|how|when|where|who|can|could|would|should|do|does|did|is|are|am|will)\b/i.test(t);
+        };
+
+        const isShortNonQuestion = (text: string) => {
+          const wc = wordCount(text);
+          if (wc === 0) return true;
+          if (wc >= 6) return false;
+          if (looksLikeQuestion(text)) return false;
+          return true;
+        };
+
+        const lastUser = getLastUserText(msgs);
+
+        if (isEllipsisOnly(lastUser)) {
+          const quiet = ["I'm here.", "Still with you.", "Take your time.", "I'm listening."];
+          return quiet[Math.floor(Math.random() * quiet.length)];
+        }
+
+        // short non-questions: one calm presence line, no probing
+        if (isShortNonQuestion(lastUser)) {
+          const t = lastUser.toLowerCase();
+          const softAcks = [
+            "Okay. I'm here.",
+            "No rush. I'm here.",
+            "Alright. We can sit for a moment.",
+            "Got it. I'm with you.",
+          ];
+
+          if (/^(idk|i dont know|i don't know|not much|nm|meh|nothing|nothin|\.)$/.test(t)) {
+            return softAcks[Math.floor(Math.random() * softAcks.length)];
+          }
+
+          return softAcks[Math.floor(Math.random() * softAcks.length)];
+        }
+        // -------------------------------------------------------------------------
+if (!apiKey) {
           // Demo mode - return a placeholder
           return STAGE1_DEMO_RESPONSES[Math.floor(Math.random() * STAGE1_DEMO_RESPONSES.length)];
         }
