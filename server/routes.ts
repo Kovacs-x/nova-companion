@@ -7,6 +7,32 @@ import { z } from "zod";
 import { v4 as uuidv4 } from "uuid";
 import type { NovaRule, Boundary, NovaMood, VoiceMode } from "@shared/schema";
 import { generateResponse, buildEnhancedSystemPrompt } from "./voice-engine";
+// ================== SIMPLE IN-MEMORY RATE LIMITER ==================
+// Prevents accidental rapid calls that burn OpenAI usage.
+// In-memory: resets on restart/deploy (fine as a safety net).
+function createRateLimiter(opts: { windowMs: number; max: number }) {
+  const hits = new Map<string, number[]>();
+
+  return function rateLimit(req: any, res: any, next: any) {
+    const userKey = req?.session?.userId || req?.ip || "anon";
+    const now = Date.now();
+    const windowStart = now - opts.windowMs;
+
+    const prev = hits.get(userKey) || [];
+    const recent = prev.filter((t) => t >= windowStart);
+    recent.push(now);
+    hits.set(userKey, recent);
+
+    if (recent.length > opts.max) {
+      return res.status(429).json({
+        error: "Rate limit: slow down a moment.",
+        retryAfterMs: opts.windowMs,
+      });
+    }
+
+    next();
+  };
+}
 
 const SALT_ROUNDS = 12;
 
@@ -463,7 +489,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   // ============ OPENAI PROXY WITH VOICE ENGINE ============
 
-  app.post("/api/chat/completions", requireAuth, async (req, res) => {
+  app.post("/api/chat/completions", requireAuth, createRateLimiter({ windowMs: 15_000, max: 8 }), async (req, res) => {
+
     try {
       const apiKey = process.env.OPENAI_API_KEY;
       const messages = req.body.messages || [];
@@ -552,11 +579,21 @@ if (!apiKey) {
           body: JSON.stringify({
             model: modelName,
             messages: apiMessages,
-          }),
+            max_tokens: 220,
+        }),
+
         });
 
         const data = await response.json();
+
+        if (!response.ok) {
+          console.error("OpenAI error:", data);
+          // Clear message so you SEE issues rather than silently looping and burning usage.
+          return "I couldn’t reach the model just now. Try again in a moment.";
+        }
+
         return data.choices?.[0]?.message?.content || "I'm here.";
+
       };
 
       // Route through voice engine
