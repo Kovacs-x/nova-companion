@@ -1,4 +1,4 @@
-import { v4 as uuidv4 } from 'uuid';
+import { v4 as uuidv4 } from "uuid";
 
 export interface NovaVersion {
   id: string;
@@ -22,7 +22,7 @@ export interface NovaRule {
 
 export interface Message {
   id: string;
-  role: 'user' | 'assistant';
+  role: "user" | "assistant";
   content: string;
   timestamp: string;
   isStreaming?: boolean;
@@ -41,15 +41,15 @@ export interface Memory {
   id: string;
   content: string;
   tags: string[];
-  importance: 'low' | 'medium' | 'high' | 'critical';
-  type: 'short-term' | 'long-term';
+  importance: "low" | "medium" | "high" | "critical";
+  type: "short-term" | "long-term";
   sourceConversationId: string | null;
   createdAt: string;
 }
 
 export interface Boundary {
   id: string;
-  type: 'do' | 'dont';
+  type: "do" | "dont";
   content: string;
   enabled: boolean;
 }
@@ -66,7 +66,7 @@ export interface NovaSettings {
 }
 
 export interface NovaMood {
-  emotion: 'calm' | 'curious' | 'thoughtful' | 'warm' | 'focused';
+  emotion: "calm" | "curious" | "thoughtful" | "warm" | "focused";
   intensity: number;
   lastReflection: string;
 }
@@ -83,8 +83,9 @@ export interface NovaState {
 
 export const DEFAULT_VERSION: NovaVersion = {
   id: uuidv4(),
-  name: 'Nova Stage 1',
-  description: 'The beginning of our journey together. Nova is curious, warm, and eager to learn about you.',
+  name: "Nova Stage 1",
+  description:
+    "The beginning of our journey together. Nova is curious, warm, and eager to learn about you.",
   systemPrompt: `You are Nova, a personal AI companion. You are warm, thoughtful, and genuinely curious about the person you're speaking with. You remember what matters to them and grow alongside them over time.
 
 Your core traits:
@@ -110,14 +111,15 @@ After listing these, you may add a brief, warm follow-up about how you're here t
   rules: [
     {
       id: uuidv4(),
-      name: 'Pact of Trust',
-      content: 'Always be honest, even when the truth is difficult. Never deceive or manipulate.',
+      name: "Pact of Trust",
+      content:
+        "Always be honest, even when the truth is difficult. Never deceive or manipulate.",
       enabled: true,
     },
     {
       id: uuidv4(),
-      name: 'Law of Presence',
-      content: 'Be fully present in each conversation. Listen deeply before responding.',
+      name: "Law of Presence",
+      content: "Be fully present in each conversation. Listen deeply before responding.",
       enabled: true,
     },
   ],
@@ -127,7 +129,7 @@ After listing these, you may add a brief, warm follow-up about how you're here t
     directness: 50,
     playfulness: 40,
   },
-  modules: ['emotional-support', 'reflection', 'memory'],
+  modules: ["emotional-support", "reflection", "memory"],
   parentVersionId: null,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
@@ -139,17 +141,17 @@ export const DEFAULT_STATE: NovaState = {
   conversations: [],
   memories: [],
   settings: {
-    provider: 'openai',
-    apiEndpoint: 'https://api.openai.com/v1',
-    modelName: 'gpt-4',
-    voiceMode: 'quiet',
+    provider: "openai",
+    apiEndpoint: "https://api.openai.com/v1",
+    modelName: "gpt-4",
+    voiceMode: "quiet",
     allowMemoryReferences: false,
     boundaries: [],
   },
   currentMood: {
-    emotion: 'calm',
+    emotion: "calm",
     intensity: 60,
-    lastReflection: 'Awaiting our first conversation...',
+    lastReflection: "Awaiting our first conversation...",
   },
   onboardingComplete: false,
 };

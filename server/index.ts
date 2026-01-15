@@ -93,7 +93,7 @@ app.use((req, res, next) => {
     },
     () => {
       log(`serving on port ${port}`);
-      
+
       // Ensure database schema is ready after server starts
       // This runs in background to not block the health check
       import("./migrate").then(({ ensureSchema }) => {

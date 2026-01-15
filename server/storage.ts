@@ -103,7 +103,11 @@ export class DatabaseStorage implements IStorage {
 
   // Nova Versions
   async getVersions(userId: string): Promise<NovaVersion[]> {
-    return db.select().from(novaVersions).where(eq(novaVersions.userId, userId)).orderBy(novaVersions.createdAt);
+    return db
+      .select()
+      .from(novaVersions)
+      .where(eq(novaVersions.userId, userId))
+      .orderBy(novaVersions.createdAt);
   }
 
   async getVersion(id: string): Promise<NovaVersion | undefined> {
@@ -131,7 +135,11 @@ export class DatabaseStorage implements IStorage {
 
   // Conversations
   async getConversations(userId: string): Promise<Conversation[]> {
-    return db.select().from(conversations).where(eq(conversations.userId, userId)).orderBy(desc(conversations.updatedAt));
+    return db
+      .select()
+      .from(conversations)
+      .where(eq(conversations.userId, userId))
+      .orderBy(desc(conversations.updatedAt));
   }
 
   async getConversation(id: string): Promise<Conversation | undefined> {
@@ -144,7 +152,10 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  async updateConversation(id: string, updates: Partial<Conversation>): Promise<Conversation> {
+  async updateConversation(
+    id: string,
+    updates: Partial<Conversation>,
+  ): Promise<Conversation> {
     const [updated] = await db
       .update(conversations)
       .set({ ...updates, updatedAt: new Date() })
@@ -159,7 +170,11 @@ export class DatabaseStorage implements IStorage {
 
   // Messages
   async getMessages(conversationId: string): Promise<Message[]> {
-    return db.select().from(messages).where(eq(messages.conversationId, conversationId)).orderBy(messages.timestamp);
+    return db
+      .select()
+      .from(messages)
+      .where(eq(messages.conversationId, conversationId))
+      .orderBy(messages.timestamp);
   }
 
   async createMessage(message: InsertMessage): Promise<Message> {
@@ -169,7 +184,11 @@ export class DatabaseStorage implements IStorage {
 
   // Memories
   async getMemories(userId: string): Promise<Memory[]> {
-    return db.select().from(memories).where(eq(memories.userId, userId)).orderBy(desc(memories.createdAt));
+    return db
+      .select()
+      .from(memories)
+      .where(eq(memories.userId, userId))
+      .orderBy(desc(memories.createdAt));
   }
 
   async createMemory(memory: InsertMemory): Promise<Memory> {
@@ -178,7 +197,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateMemory(id: string, updates: Partial<Memory>): Promise<Memory> {
-    const [updated] = await db.update(memories).set(updates).where(eq(memories.id, id)).returning();
+    const [updated] = await db
+      .update(memories)
+      .set(updates)
+      .where(eq(memories.id, id))
+      .returning();
     return updated;
   }
 
@@ -188,7 +211,10 @@ export class DatabaseStorage implements IStorage {
 
   // User Settings
   async getSettings(userId: string): Promise<UserSettings | undefined> {
-    const [settings] = await db.select().from(userSettings).where(eq(userSettings.userId, userId));
+    const [settings] = await db
+      .select()
+      .from(userSettings)
+      .where(eq(userSettings.userId, userId));
     return settings || undefined;
   }
 
@@ -197,7 +223,10 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  async updateSettings(userId: string, updates: Partial<UserSettings>): Promise<UserSettings> {
+  async updateSettings(
+    userId: string,
+    updates: Partial<UserSettings>,
+  ): Promise<UserSettings> {
     const [updated] = await db
       .update(userSettings)
       .set({ ...updates, updatedAt: new Date() })
@@ -208,7 +237,10 @@ export class DatabaseStorage implements IStorage {
 
   // Sync Status
   async getSyncStatus(userId: string): Promise<SyncStatus | undefined> {
-    const [status] = await db.select().from(syncStatus).where(eq(syncStatus.userId, userId));
+    const [status] = await db
+      .select()
+      .from(syncStatus)
+      .where(eq(syncStatus.userId, userId));
     return status || undefined;
   }
 
@@ -217,7 +249,10 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  async updateSyncStatus(userId: string, updates: Partial<SyncStatus>): Promise<SyncStatus> {
+  async updateSyncStatus(
+    userId: string,
+    updates: Partial<SyncStatus>,
+  ): Promise<SyncStatus> {
     const [updated] = await db
       .update(syncStatus)
       .set({ ...updates, lastSyncTime: new Date() })
@@ -228,7 +263,11 @@ export class DatabaseStorage implements IStorage {
 
   // Safety Backups
   async getBackups(userId: string): Promise<SafetyBackup[]> {
-    return db.select().from(safetyBackups).where(eq(safetyBackups.userId, userId)).orderBy(desc(safetyBackups.createdAt));
+    return db
+      .select()
+      .from(safetyBackups)
+      .where(eq(safetyBackups.userId, userId))
+      .orderBy(desc(safetyBackups.createdAt));
   }
 
   async createBackup(backup: InsertSafetyBackup): Promise<SafetyBackup> {

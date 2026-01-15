@@ -1,8 +1,8 @@
-import { useState, useRef, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { Send, Sparkles, Layers, Download, Slash } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import { useState, useRef, useEffect } from "react";
+import { motion } from "framer-motion";
+import { Send, Sparkles, Layers, Download, Slash } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 interface ComposerProps {
   onSend: (message: string) => void;
@@ -18,36 +18,37 @@ export function Composer({
   onSwitchVersion,
   onExport,
   disabled,
-  placeholder = 'Message Nova...',
+  placeholder = "Message Nova...",
   className,
 }: ComposerProps) {
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState("");
   const [showActions, setShowActions] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 150) + 'px';
+      textareaRef.current.style.height = "auto";
+      textareaRef.current.style.height =
+        Math.min(textareaRef.current.scrollHeight, 150) + "px";
     }
   }, [message]);
 
   const handleSend = () => {
     if (message.trim() && !disabled) {
       onSend(message.trim());
-      setMessage('');
+      setMessage("");
       if (textareaRef.current) {
-        textareaRef.current.style.height = 'auto';
+        textareaRef.current.style.height = "auto";
       }
     }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
     }
-    if (e.key === '/' && message === '') {
+    if (e.key === "/" && message === "") {
       setShowActions(true);
     }
   };
@@ -57,10 +58,10 @@ export function Composer({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       className={cn(
-        'relative flex flex-col gap-2 p-3 rounded-2xl',
-        'bg-card/80 backdrop-blur-xl border border-border/50',
-        'shadow-lg shadow-black/5',
-        className
+        "relative flex flex-col gap-2 p-3 rounded-2xl",
+        "bg-card/80 backdrop-blur-xl border border-border/50",
+        "shadow-lg shadow-black/5",
+        className,
       )}
     >
       {showActions && (
@@ -73,14 +74,20 @@ export function Composer({
           <div className="text-xs text-muted-foreground mb-2 px-2">Quick Actions</div>
           <div className="space-y-1">
             <button
-              onClick={() => { onSwitchVersion?.(); setShowActions(false); }}
+              onClick={() => {
+                onSwitchVersion?.();
+                setShowActions(false);
+              }}
               className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-muted/50 text-sm text-left transition-colors"
             >
               <Layers className="w-4 h-4 text-purple-400" />
               <span>Switch Nova Version</span>
             </button>
             <button
-              onClick={() => { onExport?.(); setShowActions(false); }}
+              onClick={() => {
+                onExport?.();
+                setShowActions(false);
+              }}
               className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-muted/50 text-sm text-left transition-colors"
             >
               <Download className="w-4 h-4 text-purple-400" />
@@ -109,9 +116,9 @@ export function Composer({
           disabled={disabled}
           rows={1}
           className={cn(
-            'flex-1 bg-transparent border-0 resize-none focus:outline-none focus:ring-0',
-            'text-sm text-foreground placeholder:text-muted-foreground/50',
-            'py-2 px-1 max-h-[150px]'
+            "flex-1 bg-transparent border-0 resize-none focus:outline-none focus:ring-0",
+            "text-sm text-foreground placeholder:text-muted-foreground/50",
+            "py-2 px-1 max-h-[150px]",
           )}
           data-testid="input-message"
         />
@@ -121,10 +128,10 @@ export function Composer({
           disabled={!message.trim() || disabled}
           size="icon"
           className={cn(
-            'flex-shrink-0 rounded-xl h-9 w-9 transition-all',
+            "flex-shrink-0 rounded-xl h-9 w-9 transition-all",
             message.trim()
-              ? 'bg-gradient-to-br from-purple-600 to-violet-600 hover:from-purple-500 hover:to-violet-500 glow-nova'
-              : 'bg-muted text-muted-foreground'
+              ? "bg-gradient-to-br from-purple-600 to-violet-600 hover:from-purple-500 hover:to-violet-500 glow-nova"
+              : "bg-muted text-muted-foreground",
           )}
           data-testid="button-send"
         >

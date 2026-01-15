@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useLocation } from 'wouter';
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useLocation } from "wouter";
 import {
   Plus,
   Copy,
@@ -11,26 +11,31 @@ import {
   X,
   Check,
   ArrowLeft,
-} from 'lucide-react';
-import { Sidebar } from '@/components/nova/Sidebar';
-import { NovaAvatar } from '@/components/nova/NovaAvatar';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Slider } from '@/components/ui/slider';
-import { Switch } from '@/components/ui/switch';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { NovaVersion, NovaRule, Conversation } from '@/lib/types';
-import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
-import { v4 as uuidv4 } from 'uuid';
+} from "lucide-react";
+import { Sidebar } from "@/components/nova/Sidebar";
+import { NovaAvatar } from "@/components/nova/NovaAvatar";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { NovaVersion, NovaRule, Conversation } from "@/lib/types";
+import { cn } from "@/lib/utils";
+import { format } from "date-fns";
+import { v4 as uuidv4 } from "uuid";
 
 interface VersionsPageProps {
   versions: NovaVersion[];
   conversations: Conversation[];
-  onCreateVersion: (version: Omit<NovaVersion, 'id' | 'createdAt' | 'updatedAt'>) => NovaVersion | Promise<NovaVersion>;
+  onCreateVersion: (
+    version: Omit<NovaVersion, "id" | "createdAt" | "updatedAt">,
+  ) => NovaVersion | Promise<NovaVersion>;
   onUpdateVersion: (id: string, updates: Partial<NovaVersion>) => void | Promise<void>;
-  onCloneVersion: (id: string, newName: string) => NovaVersion | null | Promise<NovaVersion | null>;
+  onCloneVersion: (
+    id: string,
+    newName: string,
+  ) => NovaVersion | null | Promise<NovaVersion | null>;
   onDeleteVersion: (id: string) => void | Promise<void>;
 }
 
@@ -47,11 +52,11 @@ export default function VersionsPage({
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<Partial<NovaVersion>>({});
   const [showCloneDialog, setShowCloneDialog] = useState(false);
-  const [cloneName, setCloneName] = useState('');
+  const [cloneName, setCloneName] = useState("");
 
   const getParentVersion = (parentId: string | null) => {
     if (!parentId) return null;
-    return versions.find(v => v.id === parentId);
+    return versions.find((v) => v.id === parentId);
   };
 
   const handleEdit = (version: NovaVersion) => {
@@ -74,7 +79,7 @@ export default function VersionsPage({
       if (cloned) {
         setSelectedVersion(cloned);
         setShowCloneDialog(false);
-        setCloneName('');
+        setCloneName("");
       }
     }
   };
@@ -92,8 +97,8 @@ export default function VersionsPage({
     if (editForm) {
       const newRule: NovaRule = {
         id: uuidv4(),
-        name: 'New Rule',
-        content: '',
+        name: "New Rule",
+        content: "",
         enabled: true,
       };
       setEditForm({
@@ -107,7 +112,7 @@ export default function VersionsPage({
     if (editForm?.rules) {
       setEditForm({
         ...editForm,
-        rules: editForm.rules.map(r => r.id === ruleId ? { ...r, ...updates } : r),
+        rules: editForm.rules.map((r) => (r.id === ruleId ? { ...r, ...updates } : r)),
       });
     }
   };
@@ -116,7 +121,7 @@ export default function VersionsPage({
     if (editForm?.rules) {
       setEditForm({
         ...editForm,
-        rules: editForm.rules.filter(r => r.id !== ruleId),
+        rules: editForm.rules.filter((r) => r.id !== ruleId),
       });
     }
   };
@@ -127,8 +132,8 @@ export default function VersionsPage({
         conversations={conversations}
         versions={versions}
         currentConversationId={null}
-        onNewConversation={() => navigate('/')}
-        onSelectConversation={() => navigate('/')}
+        onNewConversation={() => navigate("/")}
+        onSelectConversation={() => navigate("/")}
       />
 
       <main className="flex-1 flex flex-col min-w-0">
@@ -136,14 +141,16 @@ export default function VersionsPage({
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => navigate('/')}
+            onClick={() => navigate("/")}
             className="lg:hidden"
           >
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <div className="ml-8 lg:ml-0">
             <h1 className="font-display text-xl font-bold">Nova Versions</h1>
-            <p className="text-sm text-muted-foreground">Create and evolve different versions of Nova</p>
+            <p className="text-sm text-muted-foreground">
+              Create and evolve different versions of Nova
+            </p>
           </div>
         </header>
 
@@ -155,12 +162,15 @@ export default function VersionsPage({
                 return (
                   <motion.button
                     key={version.id}
-                    onClick={() => { setSelectedVersion(version); setIsEditing(false); }}
+                    onClick={() => {
+                      setSelectedVersion(version);
+                      setIsEditing(false);
+                    }}
                     className={cn(
-                      'w-full text-left p-4 rounded-xl border transition-all',
+                      "w-full text-left p-4 rounded-xl border transition-all",
                       selectedVersion?.id === version.id
-                        ? 'bg-purple-500/10 border-purple-500/30'
-                        : 'border-border/50 hover:bg-muted/50'
+                        ? "bg-purple-500/10 border-purple-500/30"
+                        : "border-border/50 hover:bg-muted/50",
                     )}
                     whileHover={{ x: 2 }}
                     data-testid={`version-card-${version.id}`}
@@ -182,7 +192,7 @@ export default function VersionsPage({
                       {version.description}
                     </p>
                     <div className="text-[10px] text-muted-foreground/60 mt-2">
-                      {format(new Date(version.updatedAt), 'MMM d, yyyy')}
+                      {format(new Date(version.updatedAt), "MMM d, yyyy")}
                     </div>
                   </motion.button>
                 );
@@ -203,15 +213,20 @@ export default function VersionsPage({
                     <div>
                       {isEditing ? (
                         <Input
-                          value={editForm.name || ''}
-                          onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                          value={editForm.name || ""}
+                          onChange={(e) =>
+                            setEditForm({ ...editForm, name: e.target.value })
+                          }
                           className="font-display text-xl font-bold bg-transparent border-border/50"
                         />
                       ) : (
-                        <h2 className="font-display text-xl font-bold">{selectedVersion.name}</h2>
+                        <h2 className="font-display text-xl font-bold">
+                          {selectedVersion.name}
+                        </h2>
                       )}
                       <p className="text-sm text-muted-foreground">
-                        Created {format(new Date(selectedVersion.createdAt), 'MMM d, yyyy')}
+                        Created{" "}
+                        {format(new Date(selectedVersion.createdAt), "MMM d, yyyy")}
                       </p>
                     </div>
                   </div>
@@ -219,19 +234,35 @@ export default function VersionsPage({
                   <div className="flex items-center gap-2">
                     {isEditing ? (
                       <>
-                        <Button variant="ghost" size="sm" onClick={() => setIsEditing(false)}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setIsEditing(false)}
+                        >
                           <X className="w-4 h-4 mr-1" /> Cancel
                         </Button>
-                        <Button size="sm" onClick={handleSave} className="bg-purple-600 hover:bg-purple-500">
+                        <Button
+                          size="sm"
+                          onClick={handleSave}
+                          className="bg-purple-600 hover:bg-purple-500"
+                        >
                           <Check className="w-4 h-4 mr-1" /> Save
                         </Button>
                       </>
                     ) : (
                       <>
-                        <Button variant="outline" size="sm" onClick={() => handleEdit(selectedVersion)}>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEdit(selectedVersion)}
+                        >
                           <Edit3 className="w-4 h-4 mr-1" /> Edit
                         </Button>
-                        <Button variant="outline" size="sm" onClick={() => setShowCloneDialog(true)}>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowCloneDialog(true)}
+                        >
                           <Copy className="w-4 h-4 mr-1" /> Clone
                         </Button>
                         {versions.length > 1 && (
@@ -256,8 +287,10 @@ export default function VersionsPage({
                     </label>
                     {isEditing ? (
                       <Textarea
-                        value={editForm.description || ''}
-                        onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                        value={editForm.description || ""}
+                        onChange={(e) =>
+                          setEditForm({ ...editForm, description: e.target.value })
+                        }
                         className="bg-muted/30 border-border/50 min-h-[80px]"
                       />
                     ) : (
@@ -273,8 +306,10 @@ export default function VersionsPage({
                     </label>
                     {isEditing ? (
                       <Textarea
-                        value={editForm.systemPrompt || ''}
-                        onChange={(e) => setEditForm({ ...editForm, systemPrompt: e.target.value })}
+                        value={editForm.systemPrompt || ""}
+                        onChange={(e) =>
+                          setEditForm({ ...editForm, systemPrompt: e.target.value })
+                        }
                         className="bg-muted/30 border-border/50 min-h-[200px] font-mono text-sm"
                       />
                     ) : (
@@ -296,54 +331,66 @@ export default function VersionsPage({
                       )}
                     </div>
                     <div className="space-y-3">
-                      {(isEditing ? editForm.rules : selectedVersion.rules)?.map((rule) => (
-                        <div
-                          key={rule.id}
-                          className={cn(
-                            'p-4 rounded-xl border transition-colors',
-                            rule.enabled ? 'border-purple-500/30 bg-purple-500/5' : 'border-border/50 bg-muted/30 opacity-60'
-                          )}
-                        >
-                          <div className="flex items-center justify-between mb-2">
+                      {(isEditing ? editForm.rules : selectedVersion.rules)?.map(
+                        (rule) => (
+                          <div
+                            key={rule.id}
+                            className={cn(
+                              "p-4 rounded-xl border transition-colors",
+                              rule.enabled
+                                ? "border-purple-500/30 bg-purple-500/5"
+                                : "border-border/50 bg-muted/30 opacity-60",
+                            )}
+                          >
+                            <div className="flex items-center justify-between mb-2">
+                              {isEditing ? (
+                                <Input
+                                  value={rule.name}
+                                  onChange={(e) =>
+                                    handleUpdateRule(rule.id, { name: e.target.value })
+                                  }
+                                  className="bg-transparent border-0 font-medium p-0 h-auto text-sm"
+                                />
+                              ) : (
+                                <span className="font-medium text-sm">{rule.name}</span>
+                              )}
+                              <div className="flex items-center gap-2">
+                                {isEditing && (
+                                  <>
+                                    <Switch
+                                      checked={rule.enabled}
+                                      onCheckedChange={(checked) =>
+                                        handleUpdateRule(rule.id, { enabled: checked })
+                                      }
+                                    />
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-6 w-6 text-destructive"
+                                      onClick={() => handleDeleteRule(rule.id)}
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                    </Button>
+                                  </>
+                                )}
+                              </div>
+                            </div>
                             {isEditing ? (
-                              <Input
-                                value={rule.name}
-                                onChange={(e) => handleUpdateRule(rule.id, { name: e.target.value })}
-                                className="bg-transparent border-0 font-medium p-0 h-auto text-sm"
+                              <Textarea
+                                value={rule.content}
+                                onChange={(e) =>
+                                  handleUpdateRule(rule.id, { content: e.target.value })
+                                }
+                                className="bg-transparent border-0 p-0 text-sm text-muted-foreground min-h-[60px] resize-none"
                               />
                             ) : (
-                              <span className="font-medium text-sm">{rule.name}</span>
+                              <p className="text-sm text-muted-foreground">
+                                {rule.content}
+                              </p>
                             )}
-                            <div className="flex items-center gap-2">
-                              {isEditing && (
-                                <>
-                                  <Switch
-                                    checked={rule.enabled}
-                                    onCheckedChange={(checked) => handleUpdateRule(rule.id, { enabled: checked })}
-                                  />
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-6 w-6 text-destructive"
-                                    onClick={() => handleDeleteRule(rule.id)}
-                                  >
-                                    <Trash2 className="w-3 h-3" />
-                                  </Button>
-                                </>
-                              )}
-                            </div>
                           </div>
-                          {isEditing ? (
-                            <Textarea
-                              value={rule.content}
-                              onChange={(e) => handleUpdateRule(rule.id, { content: e.target.value })}
-                              className="bg-transparent border-0 p-0 text-sm text-muted-foreground min-h-[60px] resize-none"
-                            />
-                          ) : (
-                            <p className="text-sm text-muted-foreground">{rule.content}</p>
-                          )}
-                        </div>
-                      ))}
+                        ),
+                      )}
                     </div>
                   </div>
 
@@ -352,19 +399,27 @@ export default function VersionsPage({
                       Tone Traits
                     </label>
                     <div className="space-y-4">
-                      {Object.entries(isEditing ? (editForm.toneTraits || {}) : selectedVersion.toneTraits).map(([trait, value]) => (
+                      {Object.entries(
+                        isEditing
+                          ? editForm.toneTraits || {}
+                          : selectedVersion.toneTraits,
+                      ).map(([trait, value]) => (
                         <div key={trait} className="space-y-2">
                           <div className="flex items-center justify-between">
                             <span className="text-sm capitalize">{trait}</span>
-                            <span className="text-xs text-muted-foreground">{value}%</span>
+                            <span className="text-xs text-muted-foreground">
+                              {value}%
+                            </span>
                           </div>
                           {isEditing ? (
                             <Slider
                               value={[value]}
-                              onValueChange={([v]) => setEditForm({
-                                ...editForm,
-                                toneTraits: { ...editForm.toneTraits, [trait]: v }
-                              })}
+                              onValueChange={([v]) =>
+                                setEditForm({
+                                  ...editForm,
+                                  toneTraits: { ...editForm.toneTraits, [trait]: v },
+                                })
+                              }
                               max={100}
                               step={5}
                               className="[&_[role=slider]]:bg-purple-500"
@@ -386,7 +441,9 @@ export default function VersionsPage({
             ) : (
               <div className="flex flex-col items-center justify-center h-full text-center">
                 <NovaAvatar size="lg" className="mb-4" />
-                <h3 className="font-display text-lg font-semibold mb-2">Select a Version</h3>
+                <h3 className="font-display text-lg font-semibold mb-2">
+                  Select a Version
+                </h3>
                 <p className="text-sm text-muted-foreground">
                   Choose a version to view or edit its configuration
                 </p>

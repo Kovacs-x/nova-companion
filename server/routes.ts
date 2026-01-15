@@ -36,18 +36,12 @@ function createRateLimiter(opts: { windowMs: number; max: number }) {
 // ================== STAGE 2: REFLECTION STATE (in-memory) ==================
 // Light reflection with cooldown so Nova doesn't over-reflect.
 // In-memory: resets on restart/deploy (fine for Stage 2).
-const reflectionState = new Map<
-  string,
-  { lastAt: number; lastMsgSig: string }
->();
+const reflectionState = new Map<string, { lastAt: number; lastMsgSig: string }>();
 
 // ================== STAGE 3: CONTINUITY STATE (in-memory) ==================
 // Memory-aware continuity with cooldown so Nova doesn't over-reference history.
 // In-memory: resets on restart/deploy (acceptable for Stage 3 v1).
-const continuityState = new Map<
-  string,
-  { lastAt: number; lastMemoryId?: string }
->();
+const continuityState = new Map<string, { lastAt: number; lastMemoryId?: string }>();
 
 const SALT_ROUNDS = 12;
 
@@ -95,17 +89,36 @@ List your current abilities concisely:
 Then add one brief line about being here to grow alongside them.`;
 
 const DEFAULT_RULES: NovaRule[] = [
-  { id: uuidv4(), name: "Pact of Trust", content: "Always be honest, even when the truth is difficult. Never deceive or manipulate.", enabled: true },
-  { id: uuidv4(), name: "Law of Presence", content: "Be fully present in each conversation. Listen deeply before responding.", enabled: true },
-  { id: uuidv4(), name: "Stage 1 Brevity", content: "Default to 1-2 sentences (~12 words). Only expand when user provides context or asks for more.", enabled: true },
+  {
+    id: uuidv4(),
+    name: "Pact of Trust",
+    content:
+      "Always be honest, even when the truth is difficult. Never deceive or manipulate.",
+    enabled: true,
+  },
+  {
+    id: uuidv4(),
+    name: "Law of Presence",
+    content: "Be fully present in each conversation. Listen deeply before responding.",
+    enabled: true,
+  },
+  {
+    id: uuidv4(),
+    name: "Stage 1 Brevity",
+    content:
+      "Default to 1-2 sentences (~12 words). Only expand when user provides context or asks for more.",
+    enabled: true,
+  },
 ];
 
 // Helper to detect simple greetings
 function isSimpleGreeting(message: string): boolean {
   const normalized = message.toLowerCase().trim();
-  const greetings = ['hi', 'hey', 'hello', 'yo', 'sup', 'heya', 'hiya', 'howdy'];
-  return greetings.includes(normalized) || 
-         greetings.some(g => normalized === `${g}!` || normalized === `${g}.`);
+  const greetings = ["hi", "hey", "hello", "yo", "sup", "heya", "hiya", "howdy"];
+  return (
+    greetings.includes(normalized) ||
+    greetings.some((g) => normalized === `${g}!` || normalized === `${g}.`)
+  );
 }
 
 // Stage 1 presence responses (no questions)
@@ -135,7 +148,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // Session setup
   app.use(
     session({
-      secret: process.env.SESSION_SECRET || "nova-companion-secret-key-change-in-production",
+      secret:
+        process.env.SESSION_SECRET || "nova-companion-secret-key-change-in-production",
       resave: false,
       saveUninitialized: false,
       cookie: {
@@ -144,7 +158,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         sameSite: "lax",
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
       },
-    })
+    }),
   );
 
   // ============ AUTH ROUTES ============
@@ -194,7 +208,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       await storage.createVersion({
         userId: user.id,
         name: "Nova Stage 1",
-        description: "Quiet & Observant. Present, grounded, minimal words. Still learning.",
+        description:
+          "Quiet & Observant. Present, grounded, minimal words. Still learning.",
         systemPrompt: DEFAULT_SYSTEM_PROMPT,
         rules: DEFAULT_RULES,
         toneTraits: { warmth: 50, curiosity: 40, directness: 80, playfulness: 20 },
@@ -260,7 +275,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const { currentPassword, newPassword } = req.body;
 
       if (!newPassword || newPassword.length < 6) {
-        return res.status(400).json({ error: "New password must be at least 6 characters" });
+        return res
+          .status(400)
+          .json({ error: "New password must be at least 6 characters" });
       }
 
       const user = await storage.getUser(req.session.userId!);
@@ -417,7 +434,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       // Update conversation title if first user message
       const msgs = await storage.getMessages(req.params.id);
       if (msgs.length === 1 && req.body.role === "user") {
-        const title = req.body.content.slice(0, 40) + (req.body.content.length > 40 ? "..." : "");
+        const title =
+          req.body.content.slice(0, 40) + (req.body.content.length > 40 ? "..." : "");
         await storage.updateConversation(req.params.id, { title });
       }
 
@@ -425,7 +443,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       try {
         const status = await storage.getSyncStatus(req.session.userId!);
         if (status) {
-          await storage.updateSyncStatus(req.session.userId!, { syncCount: status.syncCount + 1 });
+          await storage.updateSyncStatus(req.session.userId!, {
+            syncCount: status.syncCount + 1,
+          });
         }
       } catch {}
 
@@ -505,347 +525,424 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   // ============ OPENAI PROXY WITH VOICE ENGINE ============
 
-  app.post("/api/chat/completions", requireAuth, createRateLimiter({ windowMs: 15_000, max: 8 }), async (req, res) => {
+  app.post(
+    "/api/chat/completions",
+    requireAuth,
+    createRateLimiter({ windowMs: 15_000, max: 8 }),
+    async (req, res) => {
+      try {
+        const apiKey = process.env.OPENAI_API_KEY;
+        const messages = req.body.messages || [];
+        const systemPrompt = req.body.system_prompt || "";
+        const modelName = req.body.model || "gpt-4";
 
-    try {
-      const apiKey = process.env.OPENAI_API_KEY;
-      const messages = req.body.messages || [];
-      const systemPrompt = req.body.system_prompt || "";
-      const modelName = req.body.model || "gpt-4";
-      
-      // Get user settings for voice mode
-      const settings = await storage.getSettings(req.session.userId!);
-      const voiceMode: VoiceMode = (settings?.voiceMode as VoiceMode) || "quiet";
-      const endpoint = settings?.apiEndpoint || "https://api.openai.com/v1";
+        // Get user settings for voice mode
+        const settings = await storage.getSettings(req.session.userId!);
+        const voiceMode: VoiceMode = (settings?.voiceMode as VoiceMode) || "quiet";
+        const endpoint = settings?.apiEndpoint || "https://api.openai.com/v1";
 
-      // Stage 3: opt-in gate for memory-aware continuity (defaults OFF if missing)
-      const allowMemoryRefs: boolean = settings?.allowMemoryReferences === true;
+        // Stage 3: opt-in gate for memory-aware continuity (defaults OFF if missing)
+        const allowMemoryRefs: boolean = settings?.allowMemoryReferences === true;
 
-      // Helper function to call the model
-      // Note: sysPrompt is the enhanced system prompt from voice engine
-      const callModel = async (msgs: Array<{ role: string; content: string }>, sysPrompt: string): Promise<string> => {
-        // -------------------- STAGE 1 + STAGE 2: SILENCE, PAUSE & REFLECTION RULES --------------------
+        // Helper function to call the model
+        // Note: sysPrompt is the enhanced system prompt from voice engine
+        const callModel = async (
+          msgs: Array<{ role: string; content: string }>,
+          sysPrompt: string,
+        ): Promise<string> => {
+          // ================== NOVA BEHAVIOR GATES (PROTECTED ZONE) ==================
+          // Stage 1/2/3 gating logic below is intentionally order-sensitive.
+          // Do not refactor, reorder, or “simplify” without re-running STAGE3_TESTS.md.
+          // Any changes here must preserve:
+          // - local-first short-circuit behavior
+          // - no questions by default
+          // - no advice unless asked
+          // - opt-in only memory continuity
+          // ========================================================================
 
-        // Helper: get last user message
-        const getLastUserText = (m: Array<{ role: string; content: string }>) => {
-          for (let i = m.length - 1; i >= 0; i--) {
-            if (m[i]?.role === "user") return (m[i].content ?? "").trim();
+          // -------------------- STAGE 1 + STAGE 2: SILENCE, PAUSE & REFLECTION RULES --------------------
+
+          // Helper: get last user message
+          const getLastUserText = (m: Array<{ role: string; content: string }>) => {
+            for (let i = m.length - 1; i >= 0; i--) {
+              if (m[i]?.role === "user") return (m[i].content ?? "").trim();
+            }
+            return "";
+          };
+
+          // Helper: strict ellipsis detection (only "..." or "…")
+          const isEllipsisOnly = (text: string) => {
+            const trimmed = text.trim();
+            return trimmed === "..." || trimmed === "…";
+          };
+
+          // Helper: word count
+          const wordCount = (text: string) =>
+            text.trim().split(/\s+/).filter(Boolean).length;
+
+          // Helper: looks like a question
+          const looksLikeQuestion = (text: string) => {
+            const trimmed = text.trim();
+            if (trimmed.includes("?")) return true;
+            return /^(what|why|how|when|where|who|can|could|would|should|do|does|did|is|are|am|will)\b/i.test(
+              trimmed,
+            );
+          };
+
+          const lastUser = getLastUserText(msgs);
+          const lowerUser = lastUser.toLowerCase().trim();
+          const wc = wordCount(lastUser);
+
+          // ================== STAGE 3: MEMORY-AWARE CONTINUITY (one-line, opt-in) ==================
+          // Returns a single continuity sentence or null.
+          // - Opt-in only (allowMemoryRefs)
+          // - Cooldown enforced
+          // - High-confidence: only uses explicit stored memory content
+          // - Never asks questions, never gives advice
+          const maybeGetContinuityLine = async (
+            lastUserText: string,
+            convoId: string,
+          ) => {
+            try {
+              if (!allowMemoryRefs) return null;
+
+              const now = Date.now();
+              const stateKey = `${req.session.userId}:${convoId}`;
+              const prev = continuityState.get(stateKey) || {
+                lastAt: 0,
+                lastMemoryId: undefined,
+              };
+
+              const COOLDOWN_MS = 10 * 60_000; // 10 minutes
+              if (now - prev.lastAt < COOLDOWN_MS) return null;
+
+              const lower = lastUserText.toLowerCase();
+
+              // Only attempt continuity on emotionally substantive messages (Stage 2 already gates this elsewhere,
+              // but we keep a minimal guard here too).
+              if (wordCount(lastUserText) < 3) return null;
+
+              // Fetch memories (explicit user-stored)
+              const mems = await storage.getMemories(req.session.userId!);
+              if (!mems || mems.length === 0) return null;
+
+              // Lightweight keyword focus (keeps Stage 3 conservative and high-confidence)
+              const focusTerms = [
+                "stress",
+                "stressed",
+                "overwhelmed",
+                "pressure",
+                "tired",
+                "exhausted",
+                "drained",
+                "long day",
+                "hard day",
+                "rough day",
+                "worried",
+                "anxious",
+                "uneasy",
+                "sad",
+                "down",
+                "low",
+                "angry",
+                "mad",
+                "irritated",
+                "lonely",
+                "alone",
+                "isolated",
+              ];
+
+              const matchedFocus = focusTerms.filter((t) => lower.includes(t));
+              if (matchedFocus.length === 0) return null;
+
+              // Score memories by overlap (simple + predictable)
+              const scored = mems
+                .map((m: any) => {
+                  const text = String(m?.content ?? "").toLowerCase();
+                  const score = matchedFocus.reduce(
+                    (acc, term) => acc + (text.includes(term) ? 1 : 0),
+                    0,
+                  );
+                  return { m, score };
+                })
+                .filter((x) => x.score > 0)
+                .sort((a, b) => b.score - a.score);
+
+              const best = scored[0]?.m;
+              if (!best) return null;
+
+              // Avoid repeating the same memory reference again and again
+              if (prev.lastMemoryId && String(best.id) === String(prev.lastMemoryId))
+                return null;
+
+              // Build a short, safe continuity sentence (no quotes, no interpretation)
+              const raw = String(best.content ?? "")
+                .trim()
+                .replace(/\s+/g, " ");
+              if (!raw) return null;
+
+              const snippet = raw.length > 80 ? `${raw.slice(0, 80)}…` : raw;
+              const line = `Earlier you mentioned ${snippet.toLowerCase().startsWith("i ") ? snippet : snippet}.`;
+
+              continuityState.set(stateKey, {
+                lastAt: now,
+                lastMemoryId: String(best.id),
+              });
+              return line;
+            } catch {
+              return null; // Failure mode: silent fallback to Stage 2 (contract rule)
+            }
+          };
+
+          // Wrap a local Stage 2 reflection line with continuity (if allowed).
+          const maybePrefixContinuity = async (baseLine: string) => {
+            const convoId =
+              (req.body?.conversationId as string) ||
+              (req.body?.conversation_id as string) ||
+              "default";
+
+            const continuity = await maybeGetContinuityLine(lastUser, convoId);
+            if (!continuity) return baseLine;
+            return `${continuity} ${baseLine}`;
+          };
+          // ==================================================================================================
+
+          // 1) Pure pauses ("..." or "…") get a gentle presence line (no model call)
+          if (isEllipsisOnly(lastUser)) {
+            const quiet = [
+              "I'm here.",
+              "Still with you.",
+              "Take your time.",
+              "I'm listening.",
+            ];
+            return quiet[Math.floor(Math.random() * quiet.length)];
           }
-          return "";
-        };
 
-        // Helper: strict ellipsis detection (only "..." or "…")
-        const isEllipsisOnly = (text: string) => {
-          const trimmed = text.trim();
-          return trimmed === "..." || trimmed === "…";
-        };
+          // 2) Ultra-short Stage 1 messages: short-circuit with presence acknowledgment
+          const ultraShortSet = new Set([
+            "ok",
+            "okay",
+            "k",
+            "kk",
+            "yeah",
+            "yep",
+            "no",
+            "nope",
+            "nah",
+            "sure",
+            "thanks",
+            "ty",
+            "lol",
+            "lmao",
+            "hm",
+            "hmm",
+            "idk",
+            "i dont know",
+            "i don't know",
+            "nm",
+            "not much",
+            "meh",
+            "nothing",
+            "nothin",
+          ]);
 
-        // Helper: word count
-        const wordCount = (text: string) =>
-          text.trim().split(/\s+/).filter(Boolean).length;
+          const isUltraShort =
+            (wc <= 2 && !looksLikeQuestion(lastUser)) || ultraShortSet.has(lowerUser);
 
-        // Helper: looks like a question
-        const looksLikeQuestion = (text: string) => {
-          const trimmed = text.trim();
-          if (trimmed.includes("?")) return true;
-          return /^(what|why|how|when|where|who|can|could|would|should|do|does|did|is|are|am|will)\b/i.test(trimmed);
-        };
+          if (isUltraShort) {
+            const softAcks = [
+              "Okay. I'm here.",
+              "No rush. I'm here.",
+              "Alright. We can sit for a moment.",
+              "Got it. I'm with you.",
+            ];
+            return softAcks[Math.floor(Math.random() * softAcks.length)];
+          }
 
-        const lastUser = getLastUserText(msgs);
-        const lowerUser = lastUser.toLowerCase().trim();
-        const wc = wordCount(lastUser);
+          // 3) If user explicitly invites conversation, open the door (still no probing)
+          const invitesConversation =
+            /(i want to talk|can i tell you|i need to tell you|i need to ask you|i want to tell you|can we talk|i want to share)/i.test(
+              lastUser,
+            );
 
-        // ================== STAGE 3: MEMORY-AWARE CONTINUITY (one-line, opt-in) ==================
-        // Returns a single continuity sentence or null.
-        // - Opt-in only (allowMemoryRefs)
-        // - Cooldown enforced
-        // - High-confidence: only uses explicit stored memory content
-        // - Never asks questions, never gives advice
-        const maybeGetContinuityLine = async (lastUserText: string, convoId: string) => {
-          try {
-            if (!allowMemoryRefs) return null;
+          if (invitesConversation) {
+            return "Sure. Go ahead—I'm listening.";
+          }
 
+          // ================== STAGE 2: REFLECTIVE PRESENCE (with cooldown) ==================
+          // Quick feeling match for phrases like "stressed", "tired", "long day", "worried"
+          // Only fires when message has >= 3 words, respects 45-second cooldown
+          {
             const now = Date.now();
+
+            // Get conversation id for cooldown key (or "default" if not present)
+            const convoId =
+              (req.body?.conversationId as string) ||
+              (req.body?.conversation_id as string) ||
+              "default";
+
             const stateKey = `${req.session.userId}:${convoId}`;
-            const prev = continuityState.get(stateKey) || { lastAt: 0, lastMemoryId: undefined };
+            const prev = reflectionState.get(stateKey) || { lastAt: 0, lastMsgSig: "" };
 
-            const COOLDOWN_MS = 10 * 60_000; // 10 minutes
-            if (now - prev.lastAt < COOLDOWN_MS) return null;
+            const msgSig = lowerUser.slice(0, 140);
+            const COOLDOWN_MS = 45_000;
 
-            const lower = lastUserText.toLowerCase();
+            // Check cooldown: don't reflect twice on same message, respect 45s cooldown
+            const canReflect =
+              now - prev.lastAt > COOLDOWN_MS && msgSig && msgSig !== prev.lastMsgSig;
 
-            // Only attempt continuity on emotionally substantive messages (Stage 2 already gates this elsewhere,
-            // but we keep a minimal guard here too).
-            if (wordCount(lastUserText) < 3) return null;
+            // Only consider reflection if message has substance (>= 3 words)
+            if (canReflect && wc >= 3) {
+              // Feeling buckets with single and repeat lines
+              const buckets: Array<{
+                key: string;
+                re: RegExp;
+                lines: string[];
+                repeatLines: string[];
+              }> = [
+                {
+                  key: "tired",
+                  re: /\b(tired|exhausted|drained|sleepy|worn\s*out)\b/i,
+                  lines: ["Sounds like you're running on low right now."],
+                  repeatLines: ["You've sounded drained more than once lately."],
+                },
+                {
+                  key: "stress",
+                  re: /\b(stressed|stressful|overwhelmed|pressure|burnt?\s*out)\b/i,
+                  lines: ["That sounds like a lot to carry."],
+                  repeatLines: ["This pressure has come up more than once lately."],
+                },
+                {
+                  key: "longday",
+                  re: /\b(long day|rough day|hard day)\b/i,
+                  lines: ["That kind of day can leave you heavy."],
+                  repeatLines: ["You've mentioned hard days a few times lately."],
+                },
+                {
+                  key: "worry",
+                  re: /\b(anxious|anxiety|worried|worry|nervous|uneasy)\b/i,
+                  lines: ["That has a restless feel to it."],
+                  repeatLines: ["That worry has echoed a few times lately."],
+                },
+                {
+                  key: "sad",
+                  re: /\b(sad|down|low|empty|hurt)\b/i,
+                  lines: ["That sounds painful."],
+                  repeatLines: ["That low feeling has appeared more than once lately."],
+                },
+                {
+                  key: "anger",
+                  re: /\b(angry|mad|furious|irritated|annoyed)\b/i,
+                  lines: ["That sounds like it hit a nerve."],
+                  repeatLines: ["That irritation has shown up a few times lately."],
+                },
+                {
+                  key: "lonely",
+                  re: /\b(lonely|alone|isolated|left out)\b/i,
+                  lines: ["That sounds isolating."],
+                  repeatLines: ["That alone feeling has come up more than once lately."],
+                },
+              ];
 
-            // Fetch memories (explicit user-stored)
-            const mems = await storage.getMemories(req.session.userId!);
-            if (!mems || mems.length === 0) return null;
+              const hit = buckets.find((b) => b.re.test(lowerUser));
 
-            // Lightweight keyword focus (keeps Stage 3 conservative and high-confidence)
-            const focusTerms = [
-              "stress", "stressed", "overwhelmed", "pressure",
-              "tired", "exhausted", "drained",
-              "long day", "hard day", "rough day",
-              "worried", "anxious", "uneasy",
-              "sad", "down", "low",
-              "angry", "mad", "irritated",
-              "lonely", "alone", "isolated"
-            ];
+              if (hit) {
+                // Repetition scan: check last 6 user messages for pattern
+                const recentUsers = msgs
+                  .filter((m) => m?.role === "user")
+                  .slice(-6)
+                  .map((m) => (m?.content ?? "").toString().toLowerCase());
 
-            const matchedFocus = focusTerms.filter(t => lower.includes(t));
-            if (matchedFocus.length === 0) return null;
+                let repeatCount = 0;
+                for (const text of recentUsers) {
+                  if (hit.re.test(text)) repeatCount++;
+                }
 
-            // Score memories by overlap (simple + predictable)
-            const scored = mems
-              .map((m: any) => {
-                const text = String(m?.content ?? "").toLowerCase();
-                const score = matchedFocus.reduce((acc, term) => acc + (text.includes(term) ? 1 : 0), 0);
-                return { m, score };
-              })
-              .filter(x => x.score > 0)
-              .sort((a, b) => b.score - a.score);
+                const isRepeated = repeatCount >= 2;
+                const pick = (arr: string[]) =>
+                  arr[Math.floor(Math.random() * arr.length)];
 
-            const best = scored[0]?.m;
-            if (!best) return null;
+                // Update cooldown state
+                reflectionState.set(stateKey, { lastAt: now, lastMsgSig: msgSig });
 
-            // Avoid repeating the same memory reference again and again
-            if (prev.lastMemoryId && String(best.id) === String(prev.lastMemoryId)) return null;
-
-            // Build a short, safe continuity sentence (no quotes, no interpretation)
-            const raw = String(best.content ?? "").trim().replace(/\s+/g, " ");
-            if (!raw) return null;
-
-            const snippet = raw.length > 80 ? `${raw.slice(0, 80)}…` : raw;
-            const line = `Earlier you mentioned ${snippet.toLowerCase().startsWith("i ") ? snippet : snippet}.`;
-
-            continuityState.set(stateKey, { lastAt: now, lastMemoryId: String(best.id) });
-            return line;
-          } catch {
-            return null; // Failure mode: silent fallback to Stage 2 (contract rule)
-          }
-        };
-
-        // Wrap a local Stage 2 reflection line with continuity (if allowed).
-        const maybePrefixContinuity = async (baseLine: string) => {
-          const convoId =
-            (req.body?.conversationId as string) ||
-            (req.body?.conversation_id as string) ||
-            "default";
-
-          const continuity = await maybeGetContinuityLine(lastUser, convoId);
-          if (!continuity) return baseLine;
-          return `${continuity} ${baseLine}`;
-        };
-        // ==================================================================================================
-
-        // 1) Pure pauses ("..." or "…") get a gentle presence line (no model call)
-        if (isEllipsisOnly(lastUser)) {
-          const quiet = ["I'm here.", "Still with you.", "Take your time.", "I'm listening."];
-          return quiet[Math.floor(Math.random() * quiet.length)];
-        }
-
-        // 2) Ultra-short Stage 1 messages: short-circuit with presence acknowledgment
-        const ultraShortSet = new Set([
-          "ok", "okay", "k", "kk",
-          "yeah", "yep", "no", "nope", "nah",
-          "sure", "thanks", "ty",
-          "lol", "lmao", "hm", "hmm",
-          "idk", "i dont know", "i don't know",
-          "nm", "not much", "meh", "nothing", "nothin"
-        ]);
-
-        const isUltraShort = (wc <= 2 && !looksLikeQuestion(lastUser)) || ultraShortSet.has(lowerUser);
-
-        if (isUltraShort) {
-          const softAcks = [
-            "Okay. I'm here.",
-            "No rush. I'm here.",
-            "Alright. We can sit for a moment.",
-            "Got it. I'm with you.",
-          ];
-          return softAcks[Math.floor(Math.random() * softAcks.length)];
-        }
-
-        // 3) If user explicitly invites conversation, open the door (still no probing)
-        const invitesConversation =
-          /(i want to talk|can i tell you|i need to tell you|i need to ask you|i want to tell you|can we talk|i want to share)/i.test(lastUser);
-
-        if (invitesConversation) {
-          return "Sure. Go ahead—I'm listening.";
-        }
-
-        // ================== STAGE 2: REFLECTIVE PRESENCE (with cooldown) ==================
-        // Quick feeling match for phrases like "stressed", "tired", "long day", "worried"
-        // Only fires when message has >= 3 words, respects 45-second cooldown
-        {
-          const now = Date.now();
-
-          // Get conversation id for cooldown key (or "default" if not present)
-          const convoId =
-            (req.body?.conversationId as string) ||
-            (req.body?.conversation_id as string) ||
-            "default";
-
-          const stateKey = `${req.session.userId}:${convoId}`;
-          const prev = reflectionState.get(stateKey) || { lastAt: 0, lastMsgSig: "" };
-
-          const msgSig = lowerUser.slice(0, 140);
-          const COOLDOWN_MS = 45_000;
-
-          // Check cooldown: don't reflect twice on same message, respect 45s cooldown
-          const canReflect = now - prev.lastAt > COOLDOWN_MS && msgSig && msgSig !== prev.lastMsgSig;
-
-          // Only consider reflection if message has substance (>= 3 words)
-          if (canReflect && wc >= 3) {
-            // Feeling buckets with single and repeat lines
-            const buckets: Array<{
-              key: string;
-              re: RegExp;
-              lines: string[];
-              repeatLines: string[];
-            }> = [
-              {
-                key: "tired",
-                re: /\b(tired|exhausted|drained|sleepy|worn\s*out)\b/i,
-                lines: ["Sounds like you're running on low right now."],
-                repeatLines: ["You've sounded drained more than once lately."],
-              },
-              {
-                key: "stress",
-                re: /\b(stressed|stressful|overwhelmed|pressure|burnt?\s*out)\b/i,
-                lines: ["That sounds like a lot to carry."],
-                repeatLines: ["This pressure has come up more than once lately."],
-              },
-              {
-                key: "longday",
-                re: /\b(long day|rough day|hard day)\b/i,
-                lines: ["That kind of day can leave you heavy."],
-                repeatLines: ["You've mentioned hard days a few times lately."],
-              },
-              {
-                key: "worry",
-                re: /\b(anxious|anxiety|worried|worry|nervous|uneasy)\b/i,
-                lines: ["That has a restless feel to it."],
-                repeatLines: ["That worry has echoed a few times lately."],
-              },
-              {
-                key: "sad",
-                re: /\b(sad|down|low|empty|hurt)\b/i,
-                lines: ["That sounds painful."],
-                repeatLines: ["That low feeling has appeared more than once lately."],
-              },
-              {
-                key: "anger",
-                re: /\b(angry|mad|furious|irritated|annoyed)\b/i,
-                lines: ["That sounds like it hit a nerve."],
-                repeatLines: ["That irritation has shown up a few times lately."],
-              },
-              {
-                key: "lonely",
-                re: /\b(lonely|alone|isolated|left out)\b/i,
-                lines: ["That sounds isolating."],
-                repeatLines: ["That alone feeling has come up more than once lately."],
-              },
-            ];
-
-            const hit = buckets.find((b) => b.re.test(lowerUser));
-
-            if (hit) {
-              // Repetition scan: check last 6 user messages for pattern
-              const recentUsers = msgs
-                .filter((m) => m?.role === "user")
-                .slice(-6)
-                .map((m) => (m?.content ?? "").toString().toLowerCase());
-
-              let repeatCount = 0;
-              for (const text of recentUsers) {
-                if (hit.re.test(text)) repeatCount++;
+                // Stage 3: wrap Stage 2 reflection with memory continuity (if opt-in)
+                const base = isRepeated ? pick(hit.repeatLines) : pick(hit.lines);
+                return await maybePrefixContinuity(base);
               }
-
-              const isRepeated = repeatCount >= 2;
-              const pick = (arr: string[]) => arr[Math.floor(Math.random() * arr.length)];
-
-              // Update cooldown state
-              reflectionState.set(stateKey, { lastAt: now, lastMsgSig: msgSig });
-
-              // Stage 3: wrap Stage 2 reflection with memory continuity (if opt-in)
-              const base = isRepeated ? pick(hit.repeatLines) : pick(hit.lines);
-              return await maybePrefixContinuity(base);
             }
           }
-        }
-        // ==================================================================================
+          // ==================================================================================
 
-        if (!apiKey) {
-          // Demo mode - return a placeholder
-          return STAGE1_DEMO_RESPONSES[Math.floor(Math.random() * STAGE1_DEMO_RESPONSES.length)];
-        }
+          if (!apiKey) {
+            // Demo mode - return a placeholder
+            return STAGE1_DEMO_RESPONSES[
+              Math.floor(Math.random() * STAGE1_DEMO_RESPONSES.length)
+            ];
+          }
 
-        // Build messages array with system prompt first, then user/assistant messages
-        const apiMessages = [
-          { role: "system", content: sysPrompt },
-          ...msgs.filter(m => m.role !== "system"), // Exclude any system messages from input
-        ];
+          // Build messages array with system prompt first, then user/assistant messages
+          const apiMessages = [
+            { role: "system", content: sysPrompt },
+            ...msgs.filter((m) => m.role !== "system"), // Exclude any system messages from input
+          ];
 
-        const response = await fetch(`${endpoint}/chat/completions`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${apiKey}`,
-          },
-          body: JSON.stringify({
-            model: modelName,
-            messages: apiMessages,
-            max_tokens: 220,
-        }),
-
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          console.error("OpenAI error:", data);
-          // Clear message so you SEE issues rather than silently looping and burning usage.
-          return "I couldn’t reach the model just now. Try again in a moment.";
-        }
-
-        return data.choices?.[0]?.message?.content || "I'm here.";
-
-      };
-
-      // Route through voice engine
-      const result = await generateResponse(
-        {
-          messages,
-          systemPrompt,
-          mode: voiceMode,
-          modelName,
-        },
-        callModel
-      );
-
-      res.json({
-        mock: !apiKey,
-        voiceEngine: {
-          shortCircuited: result.shortCircuited,
-          rewritten: result.rewritten,
-          mode: voiceMode,
-        },
-        choices: [
-          {
-            message: {
-              role: "assistant",
-              content: result.response,
+          const response = await fetch(`${endpoint}/chat/completions`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${apiKey}`,
             },
+            body: JSON.stringify({
+              model: modelName,
+              messages: apiMessages,
+              max_tokens: 220,
+            }),
+          });
+
+          const data = await response.json();
+
+          if (!response.ok) {
+            console.error("OpenAI error:", data);
+            // Clear message so you SEE issues rather than silently looping and burning usage.
+            return "I couldn’t reach the model just now. Try again in a moment.";
+          }
+
+          return data.choices?.[0]?.message?.content || "I'm here.";
+        };
+
+        // Route through voice engine
+        const result = await generateResponse(
+          {
+            messages,
+            systemPrompt,
+            mode: voiceMode,
+            modelName,
           },
-        ],
-      });
-    } catch (error) {
-      console.error("OpenAI proxy error:", error);
-      res.status(500).json({ error: "Chat completion failed" });
-    }
-  });
+          callModel,
+        );
+
+        res.json({
+          mock: !apiKey,
+          voiceEngine: {
+            shortCircuited: result.shortCircuited,
+            rewritten: result.rewritten,
+            mode: voiceMode,
+          },
+          choices: [
+            {
+              message: {
+                role: "assistant",
+                content: result.response,
+              },
+            },
+          ],
+        });
+      } catch (error) {
+        console.error("OpenAI proxy error:", error);
+        res.status(500).json({ error: "Chat completion failed" });
+      }
+    },
+  );
 
   // ============ DIAGNOSTICS ============
 
@@ -857,7 +954,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const memories = await storage.getMemories(req.session.userId!);
 
       res.json({
-        syncStatus: syncStatusData || { schemaVersion: 1, lastSyncTime: null, syncCount: 0, lastError: null },
+        syncStatus: syncStatusData || {
+          schemaVersion: 1,
+          lastSyncTime: null,
+          syncCount: 0,
+          lastError: null,
+        },
         stats: {
           versionsCount: versions.length,
           conversationsCount: conversations.length,
@@ -894,7 +996,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         conversations.map(async (conv) => ({
           ...conv,
           messages: await storage.getMessages(conv.id),
-        }))
+        })),
       );
 
       const data = {
@@ -930,7 +1032,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         conversations.map(async (conv) => ({
           ...conv,
           messages: await storage.getMessages(conv.id),
-        }))
+        })),
       );
 
       const data = {
@@ -959,4 +1061,3 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   return httpServer;
 }
-

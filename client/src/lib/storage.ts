@@ -1,12 +1,12 @@
-import { NovaState, DEFAULT_STATE } from './types';
+import { NovaState, DEFAULT_STATE } from "./types";
 
-const STORAGE_KEY = 'nova-companion-state';
+const STORAGE_KEY = "nova-companion-state";
 
 export function loadState(): NovaState {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (!stored) return DEFAULT_STATE;
-    
+
     const parsed = JSON.parse(stored) as NovaState;
     return migrateState(parsed);
   } catch {
@@ -18,25 +18,25 @@ export function saveState(state: NovaState): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   } catch (e) {
-    console.error('Failed to save state:', e);
+    console.error("Failed to save state:", e);
   }
 }
 
 export function migrateState(state: NovaState): NovaState {
   let migrated = { ...state };
-  
+
   if (!migrated.schemaVersion) {
     migrated.schemaVersion = 1;
   }
-  
+
   if (!migrated.currentMood) {
     migrated.currentMood = DEFAULT_STATE.currentMood;
   }
-  
+
   if (migrated.onboardingComplete === undefined) {
     migrated.onboardingComplete = false;
   }
-  
+
   return migrated;
 }
 

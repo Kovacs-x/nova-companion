@@ -1,13 +1,13 @@
-import { useState, useRef, useEffect, useLayoutEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Sidebar } from '@/components/nova/Sidebar';
-import { NovaPresence } from '@/components/nova/NovaPresence';
-import { ChatMessage, TypingIndicator } from '@/components/nova/ChatMessage';
-import { Composer } from '@/components/nova/Composer';
-import { NovaAvatar } from '@/components/nova/NovaAvatar';
-import { Conversation, NovaVersion, NovaMood, NovaSettings } from '@/lib/types';
-import { api } from '@/lib/api';
-import { cn } from '@/lib/utils';
+import { useState, useRef, useEffect, useLayoutEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Sidebar } from "@/components/nova/Sidebar";
+import { NovaPresence } from "@/components/nova/NovaPresence";
+import { ChatMessage, TypingIndicator } from "@/components/nova/ChatMessage";
+import { Composer } from "@/components/nova/Composer";
+import { NovaAvatar } from "@/components/nova/NovaAvatar";
+import { Conversation, NovaVersion, NovaMood, NovaSettings } from "@/lib/types";
+import { api } from "@/lib/api";
+import { cn } from "@/lib/utils";
 
 interface ChatPageProps {
   conversations: Conversation[];
@@ -16,7 +16,11 @@ interface ChatPageProps {
   settings: NovaSettings;
   onNewConversation: (versionId: string) => Promise<Conversation>;
   onSelectConversation: (id: string) => void;
-  onSendMessage: (conversationId: string, content: string, role?: 'user' | 'assistant') => Promise<void>;
+  onSendMessage: (
+    conversationId: string,
+    content: string,
+    role?: "user" | "assistant",
+  ) => Promise<void>;
   onExport: () => void;
   currentConversationId: string | null;
   setCurrentConversationId: (id: string | null) => void;
@@ -43,9 +47,9 @@ export default function ChatPage({
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const currentConversation = conversations.find(c => c.id === currentConversationId);
+  const currentConversation = conversations.find((c) => c.id === currentConversationId);
   const currentVersion = currentConversation
-    ? versions.find(v => v.id === currentConversation.versionId)
+    ? versions.find((v) => v.id === currentConversation.versionId)
     : versions[0];
 
   // Check if user is near bottom (within 140px)
@@ -73,14 +77,14 @@ export default function ChatPage({
   // Auto-scroll to bottom when messages change (unless user scrolled up)
   useLayoutEffect(() => {
     if (!userHasScrolledUp && messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'auto' });
+      messagesEndRef.current.scrollIntoView({ behavior: "auto" });
     }
   }, [currentConversation?.messages, userHasScrolledUp]);
 
   // Also scroll when typing indicator appears
   useLayoutEffect(() => {
     if (isTyping && !userHasScrolledUp && messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'auto' });
+      messagesEndRef.current.scrollIntoView({ behavior: "auto" });
     }
   }, [isTyping, userHasScrolledUp]);
 
@@ -104,46 +108,51 @@ export default function ChatPage({
 
   const handleSend = async (content: string) => {
     let targetConvId = currentConversationId;
-    
+
     if (!targetConvId) {
       try {
         const conv = await onNewConversation(versions[0].id);
         targetConvId = conv.id;
       } catch (error) {
-        console.error('Failed to create conversation:', error);
+        console.error("Failed to create conversation:", error);
         return;
       }
     }
 
-    const conv = conversations.find(c => c.id === targetConvId);
-    const version = versions.find(v => v.id === (conv?.versionId || versions[0].id));
+    const conv = conversations.find((c) => c.id === targetConvId);
+    const version = versions.find((v) => v.id === (conv?.versionId || versions[0].id));
     const currentMessages = conv?.messages || [];
-    
-    await onSendMessage(targetConvId, content, 'user');
-    
+
+    await onSendMessage(targetConvId, content, "user");
+
     setIsTyping(true);
-    
+
     try {
       const response = await api.chat.complete(
-        [...currentMessages, { role: 'user', content }],
+        [...currentMessages, { role: "user", content }],
         settings.modelName,
-        version?.systemPrompt || ''
+        version?.systemPrompt || "",
       );
-      
+
       setIsTyping(false);
-      
+
       if (response.mock) {
         setIsDemoMode(true);
       }
-      
-      const assistantMessage = response.choices?.[0]?.message?.content || 
+
+      const assistantMessage =
+        response.choices?.[0]?.message?.content ||
         "I'm here with you. What's on your mind?";
-      
-      await onSendMessage(targetConvId, assistantMessage, 'assistant');
+
+      await onSendMessage(targetConvId, assistantMessage, "assistant");
     } catch (error) {
       setIsTyping(false);
-      console.error('Chat error:', error);
-      await onSendMessage(targetConvId, "I apologize, but I encountered an issue. Let's try again.", 'assistant');
+      console.error("Chat error:", error);
+      await onSendMessage(
+        targetConvId,
+        "I apologize, but I encountered an issue. Let's try again.",
+        "assistant",
+      );
     }
   };
 
@@ -188,7 +197,8 @@ export default function ChatPage({
               {isDemoMode && (
                 <div className="px-6 py-2 bg-purple-500/10 border-b border-purple-500/20">
                   <p className="text-xs text-purple-300 text-center">
-                    <span className="font-medium">Demo mode:</span> Connect your API key in Settings to use real AI responses
+                    <span className="font-medium">Demo mode:</span> Connect your API key
+                    in Settings to use real AI responses
                   </p>
                 </div>
               )}
@@ -197,19 +207,21 @@ export default function ChatPage({
                   <NovaAvatar size="sm" />
                   <div>
                     <h2 className="font-medium text-sm">Nova — Companion</h2>
-                    <span className="text-xs text-muted-foreground/60">Present and listening</span>
+                    <span className="text-xs text-muted-foreground/60">
+                      Present and listening
+                    </span>
                   </div>
                 </div>
               </div>
             </header>
 
             <div className="flex-1 flex min-h-0">
-              <div 
+              <div
                 ref={scrollContainerRef}
                 onScroll={handleScroll}
                 className={cn(
                   "flex-1 px-4 py-6 overflow-y-auto chat-scroll-area",
-                  isScrolling && "scrolling"
+                  isScrolling && "scrolling",
                 )}
               >
                 <div className="space-y-4 pb-4">
@@ -220,9 +232,7 @@ export default function ChatPage({
                       isLast={i === currentConversation.messages.length - 1}
                     />
                   ))}
-                  <AnimatePresence>
-                    {isTyping && <TypingIndicator />}
-                  </AnimatePresence>
+                  <AnimatePresence>{isTyping && <TypingIndicator />}</AnimatePresence>
                   <div ref={messagesEndRef} />
                 </div>
               </div>
@@ -263,16 +273,18 @@ export default function ChatPage({
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md p-6 bg-card border border-border rounded-2xl shadow-2xl z-50"
             >
-              <h3 className="font-display text-lg font-semibold mb-4">Choose Nova Version</h3>
+              <h3 className="font-display text-lg font-semibold mb-4">
+                Choose Nova Version
+              </h3>
               <div className="space-y-2">
-                {versions.map(version => (
+                {versions.map((version) => (
                   <button
                     key={version.id}
                     onClick={() => handleSelectVersion(version.id)}
                     className={cn(
-                      'w-full text-left p-4 rounded-xl border transition-colors',
-                      'hover:bg-purple-500/10 hover:border-purple-500/30',
-                      'border-border/50 bg-muted/30'
+                      "w-full text-left p-4 rounded-xl border transition-colors",
+                      "hover:bg-purple-500/10 hover:border-purple-500/30",
+                      "border-border/50 bg-muted/30",
                     )}
                     data-testid={`version-picker-${version.id}`}
                   >

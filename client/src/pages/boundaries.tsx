@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useLocation } from 'wouter';
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useLocation } from "wouter";
 import {
   Shield,
   Plus,
@@ -12,20 +12,20 @@ import {
   ThumbsUp,
   ThumbsDown,
   RotateCcw,
-} from 'lucide-react';
-import { Sidebar } from '@/components/nova/Sidebar';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Switch } from '@/components/ui/switch';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Boundary, Conversation, NovaVersion } from '@/lib/types';
-import { cn } from '@/lib/utils';
+} from "lucide-react";
+import { Sidebar } from "@/components/nova/Sidebar";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Boundary, Conversation, NovaVersion } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 interface BoundariesPageProps {
   boundaries: Boundary[];
   conversations: Conversation[];
   versions: NovaVersion[];
-  onAddBoundary: (boundary: Omit<Boundary, 'id'>) => void;
+  onAddBoundary: (boundary: Omit<Boundary, "id">) => void;
   onUpdateBoundary: (id: string, updates: Partial<Boundary>) => void;
   onDeleteBoundary: (id: string) => void;
   onReset: () => void;
@@ -43,15 +43,18 @@ export default function BoundariesPage({
   const [, navigate] = useLocation();
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showResetDialog, setShowResetDialog] = useState(false);
-  const [newBoundary, setNewBoundary] = useState({ type: 'do' as Boundary['type'], content: '' });
+  const [newBoundary, setNewBoundary] = useState({
+    type: "do" as Boundary["type"],
+    content: "",
+  });
 
-  const doRules = boundaries.filter(b => b.type === 'do');
-  const dontRules = boundaries.filter(b => b.type === 'dont');
+  const doRules = boundaries.filter((b) => b.type === "do");
+  const dontRules = boundaries.filter((b) => b.type === "dont");
 
   const handleAdd = () => {
     if (newBoundary.content.trim()) {
       onAddBoundary({ ...newBoundary, enabled: true });
-      setNewBoundary({ type: 'do', content: '' });
+      setNewBoundary({ type: "do", content: "" });
       setShowAddDialog(false);
     }
   };
@@ -66,20 +69,22 @@ export default function BoundariesPage({
       initial={{ opacity: 0, x: -10 }}
       animate={{ opacity: 1, x: 0 }}
       className={cn(
-        'flex items-start gap-3 p-4 rounded-xl border transition-all',
+        "flex items-start gap-3 p-4 rounded-xl border transition-all",
         boundary.enabled
-          ? boundary.type === 'do'
-            ? 'bg-green-500/5 border-green-500/20'
-            : 'bg-red-500/5 border-red-500/20'
-          : 'bg-muted/30 border-border/50 opacity-60'
+          ? boundary.type === "do"
+            ? "bg-green-500/5 border-green-500/20"
+            : "bg-red-500/5 border-red-500/20"
+          : "bg-muted/30 border-border/50 opacity-60",
       )}
       data-testid={`boundary-${boundary.id}`}
     >
-      <div className={cn(
-        'flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center',
-        boundary.type === 'do' ? 'bg-green-500/20' : 'bg-red-500/20'
-      )}>
-        {boundary.type === 'do' ? (
+      <div
+        className={cn(
+          "flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center",
+          boundary.type === "do" ? "bg-green-500/20" : "bg-red-500/20",
+        )}
+      >
+        {boundary.type === "do" ? (
           <ThumbsUp className="w-4 h-4 text-green-500" />
         ) : (
           <ThumbsDown className="w-4 h-4 text-red-500" />
@@ -87,10 +92,12 @@ export default function BoundariesPage({
       </div>
 
       <div className="flex-1 min-w-0">
-        <p className={cn(
-          'text-sm leading-relaxed',
-          boundary.enabled ? 'text-foreground' : 'text-muted-foreground'
-        )}>
+        <p
+          className={cn(
+            "text-sm leading-relaxed",
+            boundary.enabled ? "text-foreground" : "text-muted-foreground",
+          )}
+        >
           {boundary.content}
         </p>
       </div>
@@ -98,7 +105,9 @@ export default function BoundariesPage({
       <div className="flex items-center gap-2">
         <Switch
           checked={boundary.enabled}
-          onCheckedChange={(checked) => onUpdateBoundary(boundary.id, { enabled: checked })}
+          onCheckedChange={(checked) =>
+            onUpdateBoundary(boundary.id, { enabled: checked })
+          }
         />
         <Button
           variant="ghost"
@@ -118,8 +127,8 @@ export default function BoundariesPage({
         conversations={conversations}
         versions={versions}
         currentConversationId={null}
-        onNewConversation={() => navigate('/')}
-        onSelectConversation={() => navigate('/')}
+        onNewConversation={() => navigate("/")}
+        onSelectConversation={() => navigate("/")}
       />
 
       <main className="flex-1 flex flex-col min-w-0">
@@ -127,7 +136,7 @@ export default function BoundariesPage({
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => navigate('/')}
+            onClick={() => navigate("/")}
             className="lg:hidden"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -135,7 +144,9 @@ export default function BoundariesPage({
           <Shield className="w-6 h-6 text-purple-400 ml-8 lg:ml-0" />
           <div className="flex-1">
             <h1 className="font-display text-xl font-bold">Boundaries</h1>
-            <p className="text-sm text-muted-foreground">Define what Nova should and shouldn't do</p>
+            <p className="text-sm text-muted-foreground">
+              Define what Nova should and shouldn't do
+            </p>
           </div>
           <Button
             variant="outline"
@@ -163,10 +174,13 @@ export default function BoundariesPage({
             >
               <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
               <div>
-                <h4 className="font-medium text-sm text-amber-200 mb-1">Important Disclaimer</h4>
+                <h4 className="font-medium text-sm text-amber-200 mb-1">
+                  Important Disclaimer
+                </h4>
                 <p className="text-sm text-amber-200/70 leading-relaxed">
-                  Nova Companion is not a substitute for professional mental health care, therapy, or medical advice.
-                  If you're experiencing a crisis, please contact a mental health professional or emergency services.
+                  Nova Companion is not a substitute for professional mental health care,
+                  therapy, or medical advice. If you're experiencing a crisis, please
+                  contact a mental health professional or emergency services.
                 </p>
               </div>
             </motion.div>
@@ -183,7 +197,7 @@ export default function BoundariesPage({
                     No "do" rules defined yet.
                   </p>
                 ) : (
-                  doRules.map(boundary => (
+                  doRules.map((boundary) => (
                     <BoundaryCard key={boundary.id} boundary={boundary} />
                   ))
                 )}
@@ -194,7 +208,9 @@ export default function BoundariesPage({
               <div className="flex items-center gap-2 mb-4">
                 <ThumbsDown className="w-5 h-5 text-red-500" />
                 <h2 className="font-display text-lg font-semibold">Don't Rules</h2>
-                <span className="text-xs text-muted-foreground">({dontRules.length})</span>
+                <span className="text-xs text-muted-foreground">
+                  ({dontRules.length})
+                </span>
               </div>
               <div className="space-y-3">
                 {dontRules.length === 0 ? (
@@ -202,7 +218,7 @@ export default function BoundariesPage({
                     No "don't" rules defined yet.
                   </p>
                 ) : (
-                  dontRules.map(boundary => (
+                  dontRules.map((boundary) => (
                     <BoundaryCard key={boundary.id} boundary={boundary} />
                   ))
                 )}
@@ -230,7 +246,11 @@ export default function BoundariesPage({
             >
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-display text-lg font-semibold">Add Boundary Rule</h3>
-                <Button variant="ghost" size="icon" onClick={() => setShowAddDialog(false)}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setShowAddDialog(false)}
+                >
                   <X className="w-4 h-4" />
                 </Button>
               </div>
@@ -238,21 +258,21 @@ export default function BoundariesPage({
               <div className="space-y-4">
                 <div className="flex gap-2">
                   <Button
-                    variant={newBoundary.type === 'do' ? 'default' : 'outline'}
-                    onClick={() => setNewBoundary({ ...newBoundary, type: 'do' })}
+                    variant={newBoundary.type === "do" ? "default" : "outline"}
+                    onClick={() => setNewBoundary({ ...newBoundary, type: "do" })}
                     className={cn(
-                      'flex-1',
-                      newBoundary.type === 'do' && 'bg-green-600 hover:bg-green-500'
+                      "flex-1",
+                      newBoundary.type === "do" && "bg-green-600 hover:bg-green-500",
                     )}
                   >
                     <ThumbsUp className="w-4 h-4 mr-1" /> Do
                   </Button>
                   <Button
-                    variant={newBoundary.type === 'dont' ? 'default' : 'outline'}
-                    onClick={() => setNewBoundary({ ...newBoundary, type: 'dont' })}
+                    variant={newBoundary.type === "dont" ? "default" : "outline"}
+                    onClick={() => setNewBoundary({ ...newBoundary, type: "dont" })}
                     className={cn(
-                      'flex-1',
-                      newBoundary.type === 'dont' && 'bg-red-600 hover:bg-red-500'
+                      "flex-1",
+                      newBoundary.type === "dont" && "bg-red-600 hover:bg-red-500",
                     )}
                   >
                     <ThumbsDown className="w-4 h-4 mr-1" /> Don't
@@ -261,10 +281,14 @@ export default function BoundariesPage({
 
                 <Input
                   value={newBoundary.content}
-                  onChange={(e) => setNewBoundary({ ...newBoundary, content: e.target.value })}
-                  placeholder={newBoundary.type === 'do'
-                    ? "e.g., Always be honest and transparent"
-                    : "e.g., Never give medical advice"}
+                  onChange={(e) =>
+                    setNewBoundary({ ...newBoundary, content: e.target.value })
+                  }
+                  placeholder={
+                    newBoundary.type === "do"
+                      ? "e.g., Always be honest and transparent"
+                      : "e.g., Never give medical advice"
+                  }
                   data-testid="input-boundary-content"
                 />
 
@@ -306,14 +330,16 @@ export default function BoundariesPage({
                   <AlertTriangle className="w-5 h-5 text-destructive" />
                 </div>
                 <div>
-                  <h3 className="font-display text-lg font-semibold">Reset Everything?</h3>
+                  <h3 className="font-display text-lg font-semibold">
+                    Reset Everything?
+                  </h3>
                   <p className="text-sm text-muted-foreground">This cannot be undone</p>
                 </div>
               </div>
 
               <p className="text-sm text-muted-foreground mb-6">
-                This will delete all your conversations, memories, Nova versions, and settings.
-                Nova will return to its initial state.
+                This will delete all your conversations, memories, Nova versions, and
+                settings. Nova will return to its initial state.
               </p>
 
               <div className="flex justify-end gap-2">

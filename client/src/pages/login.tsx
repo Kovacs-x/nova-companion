@@ -1,11 +1,11 @@
-import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { Lock, AlertCircle, Sparkles } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { NovaAvatar } from '@/components/nova/NovaAvatar';
-import { cn } from '@/lib/utils';
-import { api } from '@/lib/api';
+import { useState } from "react";
+import { motion } from "framer-motion";
+import { Lock, AlertCircle, Sparkles } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { NovaAvatar } from "@/components/nova/NovaAvatar";
+import { cn } from "@/lib/utils";
+import { api } from "@/lib/api";
 
 interface LoginPageProps {
   isSetup: boolean;
@@ -13,22 +13,22 @@ interface LoginPageProps {
 }
 
 export default function LoginPage({ isSetup, onSuccess }: LoginPageProps) {
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [error, setError] = useState('');
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setError("");
 
     if (password.length < 6) {
-      setError('Password must be at least 6 characters');
+      setError("Password must be at least 6 characters");
       return;
     }
 
     if (isSetup && password !== confirmPassword) {
-      setError('Passwords do not match');
+      setError("Passwords do not match");
       return;
     }
 
@@ -42,7 +42,7 @@ export default function LoginPage({ isSetup, onSuccess }: LoginPageProps) {
       }
       onSuccess();
     } catch (err: any) {
-      setError(err.message || 'Authentication failed');
+      setError(err.message || "Authentication failed");
     } finally {
       setIsLoading(false);
     }
@@ -64,20 +64,19 @@ export default function LoginPage({ isSetup, onSuccess }: LoginPageProps) {
             <motion.div
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
-              transition={{ type: 'spring', delay: 0.2 }}
+              transition={{ type: "spring", delay: 0.2 }}
               className="mb-6"
             >
               <NovaAvatar size="lg" />
             </motion.div>
 
             <h1 className="font-display text-2xl font-bold mb-2 text-gradient-nova">
-              {isSetup ? 'Create Your Password' : 'Welcome Back'}
+              {isSetup ? "Create Your Password" : "Welcome Back"}
             </h1>
             <p className="text-muted-foreground text-sm mb-6">
-              {isSetup 
-                ? 'Set a password to protect your Nova companion'
-                : 'Enter your password to continue'
-              }
+              {isSetup
+                ? "Set a password to protect your Nova companion"
+                : "Enter your password to continue"}
             </p>
 
             <form onSubmit={handleSubmit} className="w-full space-y-4">
@@ -123,20 +122,20 @@ export default function LoginPage({ isSetup, onSuccess }: LoginPageProps) {
                 type="submit"
                 disabled={isLoading}
                 className={cn(
-                  'w-full bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-500 hover:to-violet-500',
-                  'glow-nova font-medium'
+                  "w-full bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-500 hover:to-violet-500",
+                  "glow-nova font-medium",
                 )}
                 data-testid="button-submit"
               >
                 {isLoading ? (
                   <div className="flex items-center gap-2">
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    <span>{isSetup ? 'Creating...' : 'Signing in...'}</span>
+                    <span>{isSetup ? "Creating..." : "Signing in..."}</span>
                   </div>
                 ) : (
                   <div className="flex items-center gap-2">
                     <Sparkles className="w-4 h-4" />
-                    <span>{isSetup ? 'Begin Journey' : 'Continue'}</span>
+                    <span>{isSetup ? "Begin Journey" : "Continue"}</span>
                   </div>
                 )}
               </Button>

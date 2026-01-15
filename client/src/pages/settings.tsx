@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { useLocation, Link } from 'wouter';
+import { useState } from "react";
+import { motion } from "framer-motion";
+import { useLocation, Link } from "wouter";
 import {
   Settings as SettingsIcon,
   ArrowLeft,
@@ -14,21 +14,21 @@ import {
   Server,
   Volume2,
   Brain,
-} from 'lucide-react';
-import { Sidebar } from '@/components/nova/Sidebar';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
+} from "lucide-react";
+import { Sidebar } from "@/components/nova/Sidebar";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { NovaSettings, Conversation, NovaVersion, VoiceMode } from '@/lib/types';
-import { cn } from '@/lib/utils';
-import { useToast } from '@/hooks/use-toast';
+} from "@/components/ui/select";
+import { NovaSettings, Conversation, NovaVersion, VoiceMode } from "@/lib/types";
+import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 
 interface SettingsPageProps {
   settings: NovaSettings;
@@ -41,22 +41,26 @@ interface SettingsPageProps {
 }
 
 const providers = [
-  { id: 'openai', name: 'OpenAI', endpoint: 'https://api.openai.com/v1' },
-  { id: 'anthropic', name: 'Anthropic', endpoint: 'https://api.anthropic.com/v1' },
-  { id: 'custom', name: 'Custom Endpoint', endpoint: '' },
+  { id: "openai", name: "OpenAI", endpoint: "https://api.openai.com/v1" },
+  { id: "anthropic", name: "Anthropic", endpoint: "https://api.anthropic.com/v1" },
+  { id: "custom", name: "Custom Endpoint", endpoint: "" },
 ];
 
 const models = {
-  openai: ['gpt-4', 'gpt-4-turbo', 'gpt-3.5-turbo'],
-  anthropic: ['claude-3-opus', 'claude-3-sonnet', 'claude-3-haiku'],
+  openai: ["gpt-4", "gpt-4-turbo", "gpt-3.5-turbo"],
+  anthropic: ["claude-3-opus", "claude-3-sonnet", "claude-3-haiku"],
   custom: [],
 };
 
 const voiceModes: { id: VoiceMode; name: string; description: string }[] = [
-  { id: 'quiet', name: 'Quiet', description: 'Calm, minimal, presence-focused (default)' },
-  { id: 'engaged', name: 'Engaged', description: 'Warm, conversational, asks questions' },
-  { id: 'mythic', name: 'Mythic', description: 'Weighted, poetic, each word matters' },
-  { id: 'blunt', name: 'Blunt', description: 'Direct, no fluff, minimal warmth' },
+  {
+    id: "quiet",
+    name: "Quiet",
+    description: "Calm, minimal, presence-focused (default)",
+  },
+  { id: "engaged", name: "Engaged", description: "Warm, conversational, asks questions" },
+  { id: "mythic", name: "Mythic", description: "Weighted, poetic, each word matters" },
+  { id: "blunt", name: "Blunt", description: "Direct, no fluff, minimal warmth" },
 ];
 
 export default function SettingsPage({
@@ -74,17 +78,17 @@ export default function SettingsPage({
   const [hasChanges, setHasChanges] = useState(false);
 
   const handleChange = (updates: Partial<NovaSettings>) => {
-    setLocalSettings(prev => ({ ...prev, ...updates }));
+    setLocalSettings((prev) => ({ ...prev, ...updates }));
     setHasChanges(true);
   };
 
   const handleProviderChange = (providerId: string) => {
-    const provider = providers.find(p => p.id === providerId);
+    const provider = providers.find((p) => p.id === providerId);
     if (provider) {
       handleChange({
         provider: providerId,
         apiEndpoint: provider.endpoint,
-        modelName: models[providerId as keyof typeof models]?.[0] || '',
+        modelName: models[providerId as keyof typeof models]?.[0] || "",
       });
     }
   };
@@ -100,11 +104,11 @@ export default function SettingsPage({
 
   const handleExport = async () => {
     const data = await onExport();
-    const blob = new Blob([data], { type: 'application/json' });
+    const blob = new Blob([data], { type: "application/json" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
-    a.download = `nova-companion-backup-${new Date().toISOString().split('T')[0]}.json`;
+    a.download = `nova-companion-backup-${new Date().toISOString().split("T")[0]}.json`;
     a.click();
     URL.revokeObjectURL(url);
     toast({
@@ -143,8 +147,8 @@ export default function SettingsPage({
         conversations={conversations}
         versions={versions}
         currentConversationId={null}
-        onNewConversation={() => navigate('/')}
-        onSelectConversation={() => navigate('/')}
+        onNewConversation={() => navigate("/")}
+        onSelectConversation={() => navigate("/")}
       />
 
       <main className="flex-1 flex flex-col min-w-0">
@@ -152,7 +156,7 @@ export default function SettingsPage({
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => navigate('/')}
+            onClick={() => navigate("/")}
             className="lg:hidden"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -160,7 +164,9 @@ export default function SettingsPage({
           <SettingsIcon className="w-6 h-6 text-purple-400 ml-8 lg:ml-0" />
           <div className="flex-1">
             <h1 className="font-display text-xl font-bold">Settings</h1>
-            <p className="text-sm text-muted-foreground">Configure Nova and manage your data</p>
+            <p className="text-sm text-muted-foreground">
+              Configure Nova and manage your data
+            </p>
           </div>
           {hasChanges && (
             <Button
@@ -198,14 +204,16 @@ export default function SettingsPage({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {providers.map(p => (
-                        <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                      {providers.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.name}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
 
-                {localSettings.provider === 'custom' && (
+                {localSettings.provider === "custom" && (
                   <div>
                     <label className="text-sm font-medium text-muted-foreground mb-2 block">
                       API Endpoint
@@ -243,7 +251,7 @@ export default function SettingsPage({
                 <label className="text-sm font-medium text-muted-foreground mb-2 block">
                   Model Name
                 </label>
-                {localSettings.provider !== 'custom' ? (
+                {localSettings.provider !== "custom" ? (
                   <Select
                     value={localSettings.modelName}
                     onValueChange={(v) => handleChange({ modelName: v })}
@@ -252,8 +260,10 @@ export default function SettingsPage({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {models[localSettings.provider as keyof typeof models]?.map(m => (
-                        <SelectItem key={m} value={m}>{m}</SelectItem>
+                      {models[localSettings.provider as keyof typeof models]?.map((m) => (
+                        <SelectItem key={m} value={m}>
+                          {m}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -284,7 +294,7 @@ export default function SettingsPage({
                   Response Style
                 </label>
                 <div className="grid gap-2">
-                  {voiceModes.map(mode => (
+                  {voiceModes.map((mode) => (
                     <button
                       key={mode.id}
                       onClick={() => handleChange({ voiceMode: mode.id })}
@@ -292,12 +302,14 @@ export default function SettingsPage({
                         "flex flex-col items-start p-3 rounded-lg border transition-colors text-left",
                         localSettings.voiceMode === mode.id
                           ? "border-purple-500 bg-purple-500/10"
-                          : "border-border/50 hover:border-border hover:bg-muted/30"
+                          : "border-border/50 hover:border-border hover:bg-muted/30",
                       )}
                       data-testid={`voice-mode-${mode.id}`}
                     >
                       <span className="font-medium text-sm">{mode.name}</span>
-                      <span className="text-xs text-muted-foreground">{mode.description}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {mode.description}
+                      </span>
                     </button>
                   ))}
                 </div>
@@ -323,17 +335,20 @@ export default function SettingsPage({
                   <div>
                     <h3 className="font-medium text-sm">Allow Memory References</h3>
                     <p className="text-xs text-muted-foreground mt-1">
-                      When enabled, Nova can reference your stored memories during emotional conversations.
-                      Uses a 10-minute cooldown to avoid over-referencing.
+                      When enabled, Nova can reference your stored memories during
+                      emotional conversations. Uses a 10-minute cooldown to avoid
+                      over-referencing.
                     </p>
                   </div>
                   <button
-                    onClick={() => handleChange({ allowMemoryReferences: !localSettings.allowMemoryReferences })}
+                    onClick={() =>
+                      handleChange({
+                        allowMemoryReferences: !localSettings.allowMemoryReferences,
+                      })
+                    }
                     className={cn(
                       "relative w-12 h-6 rounded-full transition-colors",
-                      localSettings.allowMemoryReferences
-                        ? "bg-purple-600"
-                        : "bg-muted"
+                      localSettings.allowMemoryReferences ? "bg-purple-600" : "bg-muted",
                     )}
                     data-testid="toggle-memory-references"
                   >
@@ -342,7 +357,7 @@ export default function SettingsPage({
                         "absolute top-1 w-4 h-4 rounded-full bg-white transition-transform",
                         localSettings.allowMemoryReferences
                           ? "translate-x-7"
-                          : "translate-x-1"
+                          : "translate-x-1",
                       )}
                     />
                   </button>
@@ -366,7 +381,11 @@ export default function SettingsPage({
                       Download all your conversations, memories, and settings
                     </p>
                   </div>
-                  <Button variant="outline" onClick={handleExport} data-testid="button-export">
+                  <Button
+                    variant="outline"
+                    onClick={handleExport}
+                    data-testid="button-export"
+                  >
                     <Download className="w-4 h-4 mr-1" /> Export
                   </Button>
                 </div>
@@ -434,8 +453,8 @@ export default function SettingsPage({
                           Log out of your Nova Companion account
                         </p>
                       </div>
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         onClick={onLogout}
                         className="text-destructive hover:text-destructive"
                         data-testid="button-logout"

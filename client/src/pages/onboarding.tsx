@@ -1,9 +1,9 @@
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, ArrowRight, Layers, Shield, Heart } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { NovaAvatar } from '@/components/nova/NovaAvatar';
-import { cn } from '@/lib/utils';
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Sparkles, ArrowRight, Layers, Shield, Heart } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { NovaAvatar } from "@/components/nova/NovaAvatar";
+import { cn } from "@/lib/utils";
 
 interface OnboardingProps {
   onComplete: () => void;
@@ -11,28 +11,31 @@ interface OnboardingProps {
 
 const steps = [
   {
-    id: 'welcome',
+    id: "welcome",
     icon: Sparkles,
-    title: 'Awakening Nova',
-    description: 'Your personal AI companion is ready to begin its journey with you.',
+    title: "Awakening Nova",
+    description: "Your personal AI companion is ready to begin its journey with you.",
   },
   {
-    id: 'versions',
+    id: "versions",
     icon: Layers,
-    title: 'Nova Evolves',
-    description: 'Create different versions of Nova, each with unique traits and rules. Clone and evolve them over time.',
+    title: "Nova Evolves",
+    description:
+      "Create different versions of Nova, each with unique traits and rules. Clone and evolve them over time.",
   },
   {
-    id: 'boundaries',
+    id: "boundaries",
     icon: Shield,
-    title: 'Set Boundaries',
-    description: 'Define what Nova should and shouldn\'t do. Your boundaries shape the relationship.',
+    title: "Set Boundaries",
+    description:
+      "Define what Nova should and shouldn't do. Your boundaries shape the relationship.",
   },
   {
-    id: 'begin',
+    id: "begin",
     icon: Heart,
-    title: 'Ready to Begin',
-    description: 'Nova is now ready. Start a conversation and begin building your unique relationship.',
+    title: "Ready to Begin",
+    description:
+      "Nova is now ready. Start a conversation and begin building your unique relationship.",
   },
 ];
 
@@ -43,7 +46,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
     if (currentStep === steps.length - 1) {
       onComplete();
     } else {
-      setCurrentStep(prev => prev + 1);
+      setCurrentStep((prev) => prev + 1);
     }
   };
 
@@ -70,8 +73,8 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
             <motion.div
               key={i}
               className={cn(
-                'h-1.5 rounded-full transition-all duration-300',
-                i === currentStep ? 'w-8 bg-purple-500' : 'w-2 bg-muted'
+                "h-1.5 rounded-full transition-all duration-300",
+                i === currentStep ? "w-8 bg-purple-500" : "w-2 bg-muted",
               )}
               layoutId="step-indicator"
             />
@@ -92,7 +95,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
                 <motion.div
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
-                  transition={{ type: 'spring', delay: 0.2 }}
+                  transition={{ type: "spring", delay: 0.2 }}
                   className="mb-6"
                 >
                   <NovaAvatar size="lg" />
@@ -101,10 +104,10 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
                 <motion.div
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
-                  transition={{ type: 'spring' }}
+                  transition={{ type: "spring" }}
                   className={cn(
-                    'w-16 h-16 rounded-2xl flex items-center justify-center mb-6',
-                    'bg-gradient-to-br from-purple-500/20 to-violet-500/20 border border-purple-500/30'
+                    "w-16 h-16 rounded-2xl flex items-center justify-center mb-6",
+                    "bg-gradient-to-br from-purple-500/20 to-violet-500/20 border border-purple-500/30",
                   )}
                 >
                   <StepIcon className="w-8 h-8 text-purple-400" />
@@ -132,8 +135,8 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
                 <Button
                   onClick={handleNext}
                   className={cn(
-                    'flex-1 bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-500 hover:to-violet-500',
-                    'glow-nova font-medium'
+                    "flex-1 bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-500 hover:to-violet-500",
+                    "glow-nova font-medium",
                   )}
                   data-testid="button-continue"
                 >

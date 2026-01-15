@@ -18,14 +18,19 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
+export const insertUserSchema = createInsertSchema(users).omit({
+  id: true,
+  createdAt: true,
+});
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 
 // Nova Versions / Stages
 export const novaVersions = pgTable("nova_versions", {
   id: uuid("id").primaryKey().defaultRandom(),
-  userId: uuid("user_id").references(() => users.id).notNull(),
+  userId: uuid("user_id")
+    .references(() => users.id)
+    .notNull(),
   name: text("name").notNull(),
   description: text("description").notNull().default(""),
   systemPrompt: text("system_prompt").notNull(),
@@ -44,50 +49,75 @@ export interface NovaRule {
   enabled: boolean;
 }
 
-export const insertNovaVersionSchema = createInsertSchema(novaVersions).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertNovaVersionSchema = createInsertSchema(novaVersions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
 export type InsertNovaVersion = typeof novaVersions.$inferInsert;
 export type NovaVersion = typeof novaVersions.$inferSelect;
 
 // Conversations
 export const conversations = pgTable("conversations", {
   id: uuid("id").primaryKey().defaultRandom(),
-  userId: uuid("user_id").references(() => users.id).notNull(),
-  versionId: uuid("version_id").references(() => novaVersions.id).notNull(),
+  userId: uuid("user_id")
+    .references(() => users.id)
+    .notNull(),
+  versionId: uuid("version_id")
+    .references(() => novaVersions.id)
+    .notNull(),
   title: text("title").notNull().default("New Conversation"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-export const insertConversationSchema = createInsertSchema(conversations).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertConversationSchema = createInsertSchema(conversations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
 export type InsertConversation = z.infer<typeof insertConversationSchema>;
 export type Conversation = typeof conversations.$inferSelect;
 
 // Messages
 export const messages = pgTable("messages", {
   id: uuid("id").primaryKey().defaultRandom(),
-  conversationId: uuid("conversation_id").references(() => conversations.id, { onDelete: "cascade" }).notNull(),
+  conversationId: uuid("conversation_id")
+    .references(() => conversations.id, { onDelete: "cascade" })
+    .notNull(),
   role: text("role").$type<"user" | "assistant">().notNull(),
   content: text("content").notNull(),
   timestamp: timestamp("timestamp").defaultNow().notNull(),
 });
 
-export const insertMessageSchema = createInsertSchema(messages).omit({ id: true, timestamp: true });
+export const insertMessageSchema = createInsertSchema(messages).omit({
+  id: true,
+  timestamp: true,
+});
 export type InsertMessage = typeof messages.$inferInsert;
 export type Message = typeof messages.$inferSelect;
 
 // Memories
 export const memories = pgTable("memories", {
   id: uuid("id").primaryKey().defaultRandom(),
-  userId: uuid("user_id").references(() => users.id).notNull(),
+  userId: uuid("user_id")
+    .references(() => users.id)
+    .notNull(),
   content: text("content").notNull(),
   tags: text("tags").array().notNull().default([]),
-  importance: text("importance").$type<"low" | "medium" | "high" | "critical">().notNull().default("medium"),
+  importance: text("importance")
+    .$type<"low" | "medium" | "high" | "critical">()
+    .notNull()
+    .default("medium"),
   type: text("type").$type<"short-term" | "long-term">().notNull().default("long-term"),
   sourceConversationId: uuid("source_conversation_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const insertMemorySchema = createInsertSchema(memories).omit({ id: true, createdAt: true });
+export const insertMemorySchema = createInsertSchema(memories).omit({
+  id: true,
+  createdAt: true,
+});
 export type InsertMemory = typeof memories.$inferInsert;
 export type Memory = typeof memories.$inferSelect;
 
@@ -97,7 +127,10 @@ export type VoiceMode = "quiet" | "engaged" | "mythic" | "blunt";
 // User Settings (non-secret)
 export const userSettings = pgTable("user_settings", {
   id: uuid("id").primaryKey().defaultRandom(),
-  userId: uuid("user_id").references(() => users.id).notNull().unique(),
+  userId: uuid("user_id")
+    .references(() => users.id)
+    .notNull()
+    .unique(),
   provider: text("provider").notNull().default("openai"),
   apiEndpoint: text("api_endpoint").notNull().default("https://api.openai.com/v1"),
   modelName: text("model_name").notNull().default("gpt-4"),
@@ -125,14 +158,20 @@ export interface NovaMood {
   lastReflection: string;
 }
 
-export const insertUserSettingsSchema = createInsertSchema(userSettings).omit({ id: true, updatedAt: true });
+export const insertUserSettingsSchema = createInsertSchema(userSettings).omit({
+  id: true,
+  updatedAt: true,
+});
 export type InsertUserSettings = typeof userSettings.$inferInsert;
 export type UserSettings = typeof userSettings.$inferSelect;
 
 // Sync Status (for diagnostics)
 export const syncStatus = pgTable("sync_status", {
   id: uuid("id").primaryKey().defaultRandom(),
-  userId: uuid("user_id").references(() => users.id).notNull().unique(),
+  userId: uuid("user_id")
+    .references(() => users.id)
+    .notNull()
+    .unique(),
   lastSyncTime: timestamp("last_sync_time").defaultNow().notNull(),
   schemaVersion: integer("schema_version").notNull().default(1),
   lastError: text("last_error"),
@@ -146,12 +185,17 @@ export type SyncStatus = typeof syncStatus.$inferSelect;
 // Safety Backups
 export const safetyBackups = pgTable("safety_backups", {
   id: uuid("id").primaryKey().defaultRandom(),
-  userId: uuid("user_id").references(() => users.id).notNull(),
+  userId: uuid("user_id")
+    .references(() => users.id)
+    .notNull(),
   name: text("name").notNull(),
   data: jsonb("data").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const insertSafetyBackupSchema = createInsertSchema(safetyBackups).omit({ id: true, createdAt: true });
+export const insertSafetyBackupSchema = createInsertSchema(safetyBackups).omit({
+  id: true,
+  createdAt: true,
+});
 export type InsertSafetyBackup = z.infer<typeof insertSafetyBackupSchema>;
 export type SafetyBackup = typeof safetyBackups.$inferSelect;

@@ -44,9 +44,9 @@
   --color-nova-glow: hsl(var(--nova-glow));
   --color-warm: hsl(var(--warm));
 
-  --font-sans: 'Inter', system-ui, sans-serif;
-  --font-display: 'Space Grotesk', system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-display: "Space Grotesk", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
 }
 
 :root {
@@ -110,29 +110,47 @@
   body {
     @apply font-sans antialiased bg-background text-foreground;
   }
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     font-family: var(--font-display);
   }
 }
 
 @layer utilities {
   .glow-nova {
-    box-shadow: 0 0 20px hsl(var(--nova) / 0.3), 0 0 40px hsl(var(--nova) / 0.1);
+    box-shadow:
+      0 0 20px hsl(var(--nova) / 0.3),
+      0 0 40px hsl(var(--nova) / 0.1);
   }
-  
+
   .glow-warm {
-    box-shadow: 0 0 20px hsl(var(--warm) / 0.3), 0 0 40px hsl(var(--warm) / 0.1);
+    box-shadow:
+      0 0 20px hsl(var(--warm) / 0.3),
+      0 0 40px hsl(var(--warm) / 0.1);
   }
 
   .text-gradient-nova {
-    background: linear-gradient(135deg, hsl(var(--nova)) 0%, hsl(var(--nova-glow)) 50%, hsl(var(--warm)) 100%);
+    background: linear-gradient(
+      135deg,
+      hsl(var(--nova)) 0%,
+      hsl(var(--nova-glow)) 50%,
+      hsl(var(--warm)) 100%
+    );
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
 
   .bg-gradient-nova {
-    background: linear-gradient(135deg, hsl(var(--nova) / 0.2) 0%, hsl(var(--nova-glow) / 0.1) 100%);
+    background: linear-gradient(
+      135deg,
+      hsl(var(--nova) / 0.2) 0%,
+      hsl(var(--nova-glow) / 0.1) 100%
+    );
   }
 
   .bg-gradient-subtle {
@@ -144,8 +162,15 @@
   }
 
   @keyframes nova-pulse {
-    0%, 100% { opacity: 0.6; transform: scale(1); }
-    50% { opacity: 1; transform: scale(1.05); }
+    0%,
+    100% {
+      opacity: 0.6;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1.05);
+    }
   }
 
   .message-bubble-user {
@@ -160,11 +185,11 @@
   .scrollbar-thin::-webkit-scrollbar {
     width: 6px;
   }
-  
+
   .scrollbar-thin::-webkit-scrollbar-track {
     background: transparent;
   }
-  
+
   .scrollbar-thin::-webkit-scrollbar-thumb {
     background: hsl(var(--muted));
     border-radius: 3px;

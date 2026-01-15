@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useLocation, Link } from 'wouter';
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useLocation, Link } from "wouter";
 import {
   MessageSquare,
   Layers,
@@ -11,13 +11,13 @@ import {
   ChevronRight,
   Menu,
   X,
-} from 'lucide-react';
-import { NovaAvatar } from './NovaAvatar';
-import { Conversation, NovaVersion } from '@/lib/types';
-import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
-import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
+} from "lucide-react";
+import { NovaAvatar } from "./NovaAvatar";
+import { Conversation, NovaVersion } from "@/lib/types";
+import { cn } from "@/lib/utils";
+import { format } from "date-fns";
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface SidebarProps {
   conversations: Conversation[];
@@ -28,11 +28,11 @@ interface SidebarProps {
 }
 
 const navItems = [
-  { path: '/', icon: MessageSquare, label: 'Chat' },
-  { path: '/versions', icon: Layers, label: 'Nova Versions' },
-  { path: '/memory', icon: Brain, label: 'Memory' },
-  { path: '/boundaries', icon: Shield, label: 'Boundaries' },
-  { path: '/settings', icon: Settings, label: 'Settings' },
+  { path: "/", icon: MessageSquare, label: "Chat" },
+  { path: "/versions", icon: Layers, label: "Nova Versions" },
+  { path: "/memory", icon: Brain, label: "Memory" },
+  { path: "/boundaries", icon: Shield, label: "Boundaries" },
+  { path: "/settings", icon: Settings, label: "Settings" },
 ];
 
 export function Sidebar({
@@ -46,7 +46,7 @@ export function Sidebar({
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const getVersionName = (versionId: string) => {
-    return versions.find(v => v.id === versionId)?.name || 'Unknown';
+    return versions.find((v) => v.id === versionId)?.name || "Unknown";
   };
 
   const SidebarContent = () => (
@@ -64,27 +64,25 @@ export function Sidebar({
           <Link key={path} href={path}>
             <motion.div
               className={cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-colors',
+                "flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-colors",
                 location === path
-                  ? 'bg-purple-500/10 text-purple-400'
-                  : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+                  ? "bg-purple-500/10 text-purple-400"
+                  : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
               )}
               whileHover={{ x: 2 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => setMobileOpen(false)}
-              data-testid={`nav-${label.toLowerCase().replace(' ', '-')}`}
+              data-testid={`nav-${label.toLowerCase().replace(" ", "-")}`}
             >
               <Icon className="w-4 h-4" />
               <span className="text-sm font-medium">{label}</span>
-              {location === path && (
-                <ChevronRight className="w-4 h-4 ml-auto" />
-              )}
+              {location === path && <ChevronRight className="w-4 h-4 ml-auto" />}
             </motion.div>
           </Link>
         ))}
       </nav>
 
-      {location === '/' && (
+      {location === "/" && (
         <>
           <div className="px-4 py-3 border-t border-border/30">
             <div className="flex items-center justify-between mb-2">
@@ -113,12 +111,15 @@ export function Sidebar({
                 conversations.map((conv) => (
                   <motion.button
                     key={conv.id}
-                    onClick={() => { onSelectConversation(conv.id); setMobileOpen(false); }}
+                    onClick={() => {
+                      onSelectConversation(conv.id);
+                      setMobileOpen(false);
+                    }}
                     className={cn(
-                      'w-full text-left px-3 py-2.5 rounded-xl transition-colors',
+                      "w-full text-left px-3 py-2.5 rounded-xl transition-colors",
                       conv.id === currentConversationId
-                        ? 'bg-muted/80 text-foreground'
-                        : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground'
+                        ? "bg-muted/80 text-foreground"
+                        : "text-muted-foreground hover:bg-muted/40 hover:text-foreground",
                     )}
                     whileHover={{ x: 2 }}
                     whileTap={{ scale: 0.98 }}
@@ -135,7 +136,7 @@ export function Sidebar({
                         {getVersionName(conv.versionId)}
                       </span>
                       <span className="text-[10px] text-muted-foreground/60">
-                        {format(new Date(conv.updatedAt), 'MMM d')}
+                        {format(new Date(conv.updatedAt), "MMM d")}
                       </span>
                     </div>
                   </motion.button>
@@ -176,7 +177,7 @@ export function Sidebar({
               initial={{ x: -280 }}
               animate={{ x: 0 }}
               exit={{ x: -280 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
               className="lg:hidden fixed left-0 top-0 bottom-0 w-72 bg-sidebar border-r border-sidebar-border z-50"
             >
               <button

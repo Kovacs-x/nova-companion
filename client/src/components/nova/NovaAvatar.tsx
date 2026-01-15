@@ -1,42 +1,46 @@
-import { motion } from 'framer-motion';
-import { cn } from '@/lib/utils';
+import { motion } from "framer-motion";
+import { cn } from "@/lib/utils";
 
 interface NovaAvatarProps {
-  size?: 'sm' | 'md' | 'lg';
+  size?: "sm" | "md" | "lg";
   animated?: boolean;
   className?: string;
 }
 
-export function NovaAvatar({ size = 'md', animated = true, className }: NovaAvatarProps) {
+export function NovaAvatar({ size = "md", animated = true, className }: NovaAvatarProps) {
   const sizeClasses = {
-    sm: 'w-6 h-6',
-    md: 'w-8 h-8',
-    lg: 'w-12 h-12',
+    sm: "w-6 h-6",
+    md: "w-8 h-8",
+    lg: "w-12 h-12",
   };
 
   return (
     <motion.div
       className={cn(
-        'relative flex items-center justify-center rounded-full',
-        'bg-gradient-to-br from-purple-500/20 via-violet-500/30 to-fuchsia-500/20',
-        'border border-purple-500/30',
+        "relative flex items-center justify-center rounded-full",
+        "bg-gradient-to-br from-purple-500/20 via-violet-500/30 to-fuchsia-500/20",
+        "border border-purple-500/30",
         sizeClasses[size],
-        className
+        className,
       )}
-      animate={animated ? {
-        boxShadow: [
-          '0 0 8px rgba(168, 85, 247, 0.3)',
-          '0 0 16px rgba(168, 85, 247, 0.5)',
-          '0 0 8px rgba(168, 85, 247, 0.3)',
-        ],
-      } : undefined}
-      transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+      animate={
+        animated
+          ? {
+              boxShadow: [
+                "0 0 8px rgba(168, 85, 247, 0.3)",
+                "0 0 16px rgba(168, 85, 247, 0.5)",
+                "0 0 8px rgba(168, 85, 247, 0.3)",
+              ],
+            }
+          : undefined
+      }
+      transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
     >
       <svg
         viewBox="0 0 24 24"
         className={cn(
-          'text-purple-400',
-          size === 'sm' ? 'w-3 h-3' : size === 'md' ? 'w-4 h-4' : 'w-6 h-6'
+          "text-purple-400",
+          size === "sm" ? "w-3 h-3" : size === "md" ? "w-4 h-4" : "w-6 h-6",
         )}
         fill="currentColor"
       >
@@ -45,7 +49,7 @@ export function NovaAvatar({ size = 'md', animated = true, className }: NovaAvat
       <motion.div
         className="absolute inset-0 rounded-full bg-purple-500/10"
         animate={animated ? { scale: [1, 1.2, 1], opacity: [0.5, 0, 0.5] } : undefined}
-        transition={{ duration: 2, repeat: Infinity, ease: 'easeOut' }}
+        transition={{ duration: 2, repeat: Infinity, ease: "easeOut" }}
       />
     </motion.div>
   );

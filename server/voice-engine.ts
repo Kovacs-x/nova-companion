@@ -117,7 +117,7 @@ function isGreeting(message: string): boolean {
  */
 function isCasualProbe(message: string): boolean {
   const trimmed = message.trim();
-  return CASUAL_PROBE_PATTERNS.some(pattern => pattern.test(trimmed));
+  return CASUAL_PROBE_PATTERNS.some((pattern) => pattern.test(trimmed));
 }
 
 /**
@@ -138,15 +138,18 @@ function isAskingAboutCapabilities(message: string): boolean {
 /**
  * Check if response contains banned phrases
  */
-function containsBannedPhrase(response: string, userAskedAboutCapabilities: boolean): string | null {
+function containsBannedPhrase(
+  response: string,
+  userAskedAboutCapabilities: boolean,
+): string | null {
   const lower = response.toLowerCase();
-  
+
   for (const phrase of BANNED_PHRASES) {
     if (lower.includes(phrase)) {
       return phrase;
     }
   }
-  
+
   if (!userAskedAboutCapabilities) {
     for (const phrase of CONDITIONAL_BANNED_PHRASES) {
       if (lower.includes(phrase)) {
@@ -154,7 +157,7 @@ function containsBannedPhrase(response: string, userAskedAboutCapabilities: bool
       }
     }
   }
-  
+
   return null;
 }
 
@@ -162,7 +165,7 @@ function containsBannedPhrase(response: string, userAskedAboutCapabilities: bool
  * Count sentences in a response (approximate)
  */
 function countSentences(text: string): number {
-  const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
+  const sentences = text.split(/[.!?]+/).filter((s) => s.trim().length > 0);
   return sentences.length;
 }
 
@@ -173,18 +176,18 @@ function truncateToMaxSentences(text: string, maxSentences: number): string {
   const parts = text.split(/([.!?]+\s*)/);
   let result = "";
   let count = 0;
-  
+
   for (let i = 0; i < parts.length - 1; i += 2) {
     const sentence = parts[i];
     const punctuation = parts[i + 1] || "";
-    
+
     if (sentence.trim()) {
       result += sentence + punctuation;
       count++;
       if (count >= maxSentences) break;
     }
   }
-  
+
   return result.trim() || text.trim();
 }
 
@@ -193,47 +196,49 @@ function truncateToMaxSentences(text: string, maxSentences: number): string {
  * Evaluates semantic content across conversation history
  * Does NOT grant context just for message count - must have actual substance
  */
-function hasUserProvidedContext(messages: Array<{ role: string; content: string }>): boolean {
-  const userMessages = messages.filter(m => m.role === "user");
+function hasUserProvidedContext(
+  messages: Array<{ role: string; content: string }>,
+): boolean {
+  const userMessages = messages.filter((m) => m.role === "user");
   if (userMessages.length === 0) return false;
-  
+
   let meaningfulMessageCount = 0;
   let hasAskedQuestion = false;
   let hasSubstantialContent = false;
-  
+
   // Evaluate ALL user messages for context signals
   for (const msg of userMessages) {
     const content = msg.content.trim();
-    
+
     // Skip greetings and casual probes - they don't contribute to context
     if (isGreeting(content) || isCasualProbe(content)) continue;
-    
+
     // Track if user asked a question anywhere in history
     if (content.includes("?")) {
       hasAskedQuestion = true;
     }
-    
+
     // Substantial message (>50 chars) indicates real engagement
     if (content.length > 50) {
       hasSubstantialContent = true;
     }
-    
+
     // Count messages with actual content (>15 chars, not greetings)
     if (content.length > 15) {
       meaningfulMessageCount++;
     }
   }
-  
+
   // Context is granted if:
   // 1. User asked a direct question
   if (hasAskedQuestion) return true;
-  
+
   // 2. User provided substantial content at some point
   if (hasSubstantialContent) return true;
-  
+
   // 3. Multiple meaningful (non-greeting) messages
   if (meaningfulMessageCount >= 2) return true;
-  
+
   return false;
 }
 
@@ -249,7 +254,7 @@ function randomChoice<T>(arr: T[]): T {
  */
 export function buildEnhancedSystemPrompt(basePrompt: string, mode: VoiceMode): string {
   const style = MODE_STYLES[mode];
-  
+
   const voiceRules = `
 
 **Voice Engine Rules (Stage 1: Quiet & Observant):**
@@ -290,14 +295,17 @@ Rewritten response:`;
  */
 export async function generateResponse(
   input: VoiceEngineInput,
-  callModel: (messages: Array<{ role: string; content: string }>, systemPrompt: string) => Promise<string>
+  callModel: (
+    messages: Array<{ role: string; content: string }>,
+    systemPrompt: string,
+  ) => Promise<string>,
 ): Promise<VoiceEngineOutput> {
   const { messages, systemPrompt, mode } = input;
   const style = MODE_STYLES[mode];
-  
+
   // Get the last user message
-  const lastUserMessage = messages.filter(m => m.role === "user").pop()?.content || "";
-  
+  const lastUserMessage = messages.filter((m) => m.role === "user").pop()?.content || "";
+
   // Short-circuit: Simple greeting
   if (isGreeting(lastUserMessage)) {
     const greetingResponses = MODE_GREETING_RESPONSES[mode];
@@ -307,7 +315,7 @@ export async function generateResponse(
       rewritten: false,
     };
   }
-  
+
   // Short-circuit: Casual probe
   if (isCasualProbe(lastUserMessage)) {
     return {
@@ -316,26 +324,29 @@ export async function generateResponse(
       rewritten: false,
     };
   }
-  
+
   // Build enhanced system prompt
   const enhancedPrompt = buildEnhancedSystemPrompt(systemPrompt, mode);
-  
+
   // Call the model
   let response = await callModel(messages, enhancedPrompt);
-  
+
   // Post-processing: Check for banned phrases
   const userAskedAboutCapabilities = isAskingAboutCapabilities(lastUserMessage);
   const bannedPhrase = containsBannedPhrase(response, userAskedAboutCapabilities);
-  
+
   let rewritten = false;
   if (bannedPhrase) {
     // Attempt one rewrite
     const rewritePrompt = buildRewritePrompt(response, bannedPhrase);
     const rewriteMessages = [{ role: "user", content: rewritePrompt }];
-    
+
     try {
-      const rewrittenResponse = await callModel(rewriteMessages, "You are a writing assistant. Rewrite the text as requested.");
-      
+      const rewrittenResponse = await callModel(
+        rewriteMessages,
+        "You are a writing assistant. Rewrite the text as requested.",
+      );
+
       // Verify rewrite doesn't contain banned phrases
       if (!containsBannedPhrase(rewrittenResponse, userAskedAboutCapabilities)) {
         response = rewrittenResponse;
@@ -346,12 +357,15 @@ export async function generateResponse(
       console.error("Voice engine rewrite failed:", e);
     }
   }
-  
+
   // Post-processing: Enforce max sentences (unless user provided context)
-  if (!hasUserProvidedContext(messages) && countSentences(response) > style.maxSentences) {
+  if (
+    !hasUserProvidedContext(messages) &&
+    countSentences(response) > style.maxSentences
+  ) {
     response = truncateToMaxSentences(response, style.maxSentences);
   }
-  
+
   return {
     response,
     shortCircuited: false,

@@ -1,8 +1,8 @@
-import { motion } from 'framer-motion';
-import { Sparkles, Heart, Brain, Eye, Flame } from 'lucide-react';
-import { NovaAvatar } from './NovaAvatar';
-import { NovaMood, NovaVersion } from '@/lib/types';
-import { cn } from '@/lib/utils';
+import { motion } from "framer-motion";
+import { Sparkles, Heart, Brain, Eye, Flame } from "lucide-react";
+import { NovaAvatar } from "./NovaAvatar";
+import { NovaMood, NovaVersion } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 interface NovaPresenceProps {
   mood: NovaMood;
@@ -19,11 +19,11 @@ const moodIcons = {
 };
 
 const moodLabels = {
-  calm: 'Calm & Present',
-  curious: 'Curious',
-  thoughtful: 'Thoughtful',
-  warm: 'Warm',
-  focused: 'Focused',
+  calm: "Calm & Present",
+  curious: "Curious",
+  thoughtful: "Thoughtful",
+  warm: "Warm",
+  focused: "Focused",
 };
 
 export function NovaPresence({ mood, currentVersion, className }: NovaPresenceProps) {
@@ -34,9 +34,9 @@ export function NovaPresence({ mood, currentVersion, className }: NovaPresencePr
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       className={cn(
-        'flex flex-col gap-4 p-5 rounded-2xl',
-        'bg-card/50 backdrop-blur-xl border border-border/50',
-        className
+        "flex flex-col gap-4 p-5 rounded-2xl",
+        "bg-card/50 backdrop-blur-xl border border-border/50",
+        className,
       )}
     >
       <div className="flex items-center gap-3">
@@ -58,12 +58,18 @@ export function NovaPresence({ mood, currentVersion, className }: NovaPresencePr
             <motion.div
               key={i}
               className={cn(
-                'w-1 rounded-full',
-                i < Math.ceil(mood.intensity / 20) ? 'bg-purple-400' : 'bg-muted'
+                "w-1 rounded-full",
+                i < Math.ceil(mood.intensity / 20) ? "bg-purple-400" : "bg-muted",
               )}
               initial={{ height: 8 }}
-              animate={{ height: 8 + (i < Math.ceil(mood.intensity / 20) ? Math.sin(Date.now() / 500 + i) * 4 : 0) }}
-              transition={{ duration: 0.5, repeat: Infinity, repeatType: 'reverse' }}
+              animate={{
+                height:
+                  8 +
+                  (i < Math.ceil(mood.intensity / 20)
+                    ? Math.sin(Date.now() / 500 + i) * 4
+                    : 0),
+              }}
+              transition={{ duration: 0.5, repeat: Infinity, repeatType: "reverse" }}
             />
           ))}
         </div>

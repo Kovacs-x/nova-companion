@@ -11,6 +11,7 @@ Preferred communication style: Simple, everyday language.
 ## System Architecture
 
 ### Frontend Architecture
+
 - **Framework**: React 18 with TypeScript
 - **Routing**: Wouter (lightweight React router)
 - **State Management**: React Query for server state, custom hooks for local state
@@ -21,6 +22,7 @@ Preferred communication style: Simple, everyday language.
 The frontend follows a page-based structure with shared components. The main app state is managed through the `useNovaState` hook which handles loading/syncing data with the backend.
 
 ### Backend Architecture
+
 - **Framework**: Express.js with TypeScript
 - **API Pattern**: RESTful JSON API under `/api/*` routes
 - **Session Management**: Express-session with cookie-based authentication
@@ -30,11 +32,13 @@ The frontend follows a page-based structure with shared components. The main app
 The backend serves both the API and static files in production. Development uses Vite's dev server with HMR proxied through Express.
 
 ### Data Storage
+
 - **Database**: PostgreSQL with Drizzle ORM
 - **Schema Location**: `shared/schema.ts` contains all table definitions
 - **Migrations**: Drizzle Kit manages schema with `db:push` command
 
 Core entities:
+
 - `users` - Single admin account with password authentication
 - `novaVersions` - AI persona configurations with system prompts, rules, and tone traits
 - `conversations` - Chat sessions linked to specific Nova versions
@@ -43,12 +47,14 @@ Core entities:
 - `userSettings` - API configuration and preferences
 
 ### Authentication
+
 - Single-user admin model (first user creates account via setup flow)
 - Session-based authentication with HTTP-only cookies
 - Password requirements: minimum 6 characters
 - Protected routes use `requireAuth` middleware
 
 ### AI Integration
+
 - Configurable AI provider support (OpenAI, Anthropic, custom)
 - API keys stored in user settings
 - System prompts and rules shape AI behavior per version
@@ -57,15 +63,18 @@ Core entities:
 ## External Dependencies
 
 ### Database
+
 - **PostgreSQL**: Required, connection via `DATABASE_URL` environment variable
 - **Drizzle ORM**: Type-safe database queries and schema management
 
 ### AI Providers
+
 - **OpenAI API**: Default provider for chat completions
 - **Anthropic API**: Alternative Claude model support
 - **Custom Endpoints**: OpenAI-compatible API support
 
 ### Key NPM Packages
+
 - `@tanstack/react-query`: Server state management
 - `express-session`: Session handling
 - `bcrypt`: Password hashing
@@ -76,6 +85,7 @@ Core entities:
 - `uuid`: ID generation
 
 ### Replit-Specific
+
 - `@replit/vite-plugin-runtime-error-modal`: Error overlay in development
 - `@replit/vite-plugin-cartographer`: Development tooling
 - Custom meta images plugin for OpenGraph tags
