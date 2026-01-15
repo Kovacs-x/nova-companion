@@ -13,6 +13,7 @@ import {
   Activity,
   Server,
   Volume2,
+  Brain,
 } from 'lucide-react';
 import { Sidebar } from '@/components/nova/Sidebar';
 import { Button } from '@/components/ui/button';
@@ -303,6 +304,49 @@ export default function SettingsPage({
                 <p className="text-xs text-muted-foreground mt-3">
                   Voice mode affects Nova's response style without changing core identity.
                 </p>
+              </div>
+            </motion.section>
+
+            <motion.section
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="space-y-4"
+            >
+              <h2 className="font-display text-lg font-semibold flex items-center gap-2">
+                <Brain className="w-5 h-5 text-purple-400" />
+                Memory Continuity (Stage 3)
+              </h2>
+
+              <div className="p-4 rounded-xl bg-card border border-border/50">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-medium text-sm">Allow Memory References</h3>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      When enabled, Nova can reference your stored memories during emotional conversations.
+                      Uses a 10-minute cooldown to avoid over-referencing.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleChange({ allowMemoryReferences: !localSettings.allowMemoryReferences })}
+                    className={cn(
+                      "relative w-12 h-6 rounded-full transition-colors",
+                      localSettings.allowMemoryReferences
+                        ? "bg-purple-600"
+                        : "bg-muted"
+                    )}
+                    data-testid="toggle-memory-references"
+                  >
+                    <span
+                      className={cn(
+                        "absolute top-1 w-4 h-4 rounded-full bg-white transition-transform",
+                        localSettings.allowMemoryReferences
+                          ? "translate-x-7"
+                          : "translate-x-1"
+                      )}
+                    />
+                  </button>
+                </div>
               </div>
             </motion.section>
 

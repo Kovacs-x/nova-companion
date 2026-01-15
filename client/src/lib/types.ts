@@ -61,6 +61,7 @@ export interface NovaSettings {
   apiEndpoint: string;
   modelName: string;
   voiceMode: VoiceMode;
+  allowMemoryReferences: boolean;
   boundaries: Boundary[];
 }
 
@@ -142,6 +143,7 @@ export const DEFAULT_STATE: NovaState = {
     apiEndpoint: 'https://api.openai.com/v1',
     modelName: 'gpt-4',
     voiceMode: 'quiet',
+    allowMemoryReferences: false,
     boundaries: [],
   },
   currentMood: {
