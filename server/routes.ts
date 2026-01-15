@@ -33,6 +33,13 @@ function createRateLimiter(opts: { windowMs: number; max: number }) {
     next();
   };
 }
+// ================== STAGE 2: REFLECTION STATE (in-memory) ==================
+// Light reflection with cooldown so Nova doesn't over-reflect.
+// In-memory: resets on restart/deploy (fine for Stage 2).
+const reflectionState = new Map<
+  string,
+  { lastAt: number; lastMsgSig: string }
+>();
 
 const SALT_ROUNDS = 12;
 
@@ -506,40 +513,44 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       // Helper function to call the model
       // Note: sysPrompt is the enhanced system prompt from voice engine
       const callModel = async (msgs: Array<{ role: string; content: string }>, sysPrompt: string): Promise<string> => {
-        // -------------------- Silence & Pause Rules (Stage 1) --------------------
-        const getLastUserText = (msgs: Array<{ role: string; content: string }>) => {
-          for (let i = msgs.length - 1; i >= 0; i--) {
-            if (msgs[i]?.role === "user") return (msgs[i].content ?? "").trim();
+        // -------------------- STAGE 1 + STAGE 2: SILENCE, PAUSE & REFLECTION RULES --------------------
+
+        // Helper: get last user message
+        const getLastUserText = (m: Array<{ role: string; content: string }>) => {
+          for (let i = m.length - 1; i >= 0; i--) {
+            if (m[i]?.role === "user") return (m[i].content ?? "").trim();
           }
           return "";
         };
 
+        // Helper: strict ellipsis detection (only "..." or "…")
         const isEllipsisOnly = (text: string) => {
-          const t = text.trim();
-          return t === "..." || t === "…" || /^[.\u2026\s]+$/.test(t);
+          const trimmed = text.trim();
+          return trimmed === "..." || trimmed === "…";
         };
 
+        // Helper: word count
         const wordCount = (text: string) =>
           text.trim().split(/\s+/).filter(Boolean).length;
 
+        // Helper: looks like a question
         const looksLikeQuestion = (text: string) => {
-          const t = text.trim();
-          if (t.includes("?")) return true;
-          return /^(what|why|how|when|where|who|can|could|would|should|do|does|did|is|are|am|will)\b/i.test(t);
+          const trimmed = text.trim();
+          if (trimmed.includes("?")) return true;
+          return /^(what|why|how|when|where|who|can|could|would|should|do|does|did|is|are|am|will)\b/i.test(trimmed);
         };
 
         const lastUser = getLastUserText(msgs);
+        const lowerUser = lastUser.toLowerCase().trim();
+        const wc = wordCount(lastUser);
 
-        // 1) Pure pauses like "..." get a gentle presence line (no model call)
+        // 1) Pure pauses ("..." or "…") get a gentle presence line (no model call)
         if (isEllipsisOnly(lastUser)) {
           const quiet = ["I'm here.", "Still with you.", "Take your time.", "I'm listening."];
           return quiet[Math.floor(Math.random() * quiet.length)];
         }
 
-        // 2) Only short-circuit ULTRA-short messages (so real context goes to the model)
-        const t = lastUser.toLowerCase().trim();
-        const wc = wordCount(lastUser);
-
+        // 2) Ultra-short Stage 1 messages: short-circuit with presence acknowledgment
         const ultraShortSet = new Set([
           "ok", "okay", "k", "kk",
           "yeah", "yep", "no", "nope", "nah",
@@ -549,9 +560,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           "nm", "not much", "meh", "nothing", "nothin"
         ]);
 
-        const isUltraShort =
-          (wc <= 2 && !looksLikeQuestion(lastUser)) ||
-          ultraShortSet.has(t);
+        const isUltraShort = (wc <= 2 && !looksLikeQuestion(lastUser)) || ultraShortSet.has(lowerUser);
 
         if (isUltraShort) {
           const softAcks = [
@@ -562,7 +571,114 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           ];
           return softAcks[Math.floor(Math.random() * softAcks.length)];
         }
-        // -------------------------------------------------------------------------
+
+        // 3) If user explicitly invites conversation, open the door (still no probing)
+        const invitesConversation =
+          /(i want to talk|can i tell you|i need to tell you|i need to ask you|i want to tell you|can we talk|i want to share)/i.test(lastUser);
+
+        if (invitesConversation) {
+          return "Sure. Go ahead—I'm listening.";
+        }
+
+        // ================== STAGE 2: REFLECTIVE PRESENCE (with cooldown) ==================
+        // Quick feeling match for phrases like "stressed", "tired", "long day", "worried"
+        // Only fires when message has >= 3 words, respects 45-second cooldown
+        {
+          const now = Date.now();
+
+          // Get conversation id for cooldown key (or "default" if not present)
+          const convoId =
+            (req.body?.conversationId as string) ||
+            (req.body?.conversation_id as string) ||
+            "default";
+
+          const stateKey = `${req.session.userId}:${convoId}`;
+          const prev = reflectionState.get(stateKey) || { lastAt: 0, lastMsgSig: "" };
+
+          const msgSig = lowerUser.slice(0, 140);
+          const COOLDOWN_MS = 45_000;
+
+          // Check cooldown: don't reflect twice on same message, respect 45s cooldown
+          const canReflect = now - prev.lastAt > COOLDOWN_MS && msgSig && msgSig !== prev.lastMsgSig;
+
+          // Only consider reflection if message has substance (>= 3 words)
+          if (canReflect && wc >= 3) {
+            // Feeling buckets with single and repeat lines
+            const buckets: Array<{
+              key: string;
+              re: RegExp;
+              lines: string[];
+              repeatLines: string[];
+            }> = [
+              {
+                key: "tired",
+                re: /\b(tired|exhausted|drained|sleepy|worn\s*out)\b/i,
+                lines: ["Sounds like you're running on low right now."],
+                repeatLines: ["You've sounded drained more than once lately."],
+              },
+              {
+                key: "stress",
+                re: /\b(stressed|stressful|overwhelmed|pressure|burnt?\s*out)\b/i,
+                lines: ["That sounds like a lot to carry."],
+                repeatLines: ["This pressure has come up more than once lately."],
+              },
+              {
+                key: "longday",
+                re: /\b(long day|rough day|hard day)\b/i,
+                lines: ["That kind of day can leave you heavy."],
+                repeatLines: ["You've mentioned hard days a few times lately."],
+              },
+              {
+                key: "worry",
+                re: /\b(anxious|anxiety|worried|worry|nervous|uneasy)\b/i,
+                lines: ["That has a restless feel to it."],
+                repeatLines: ["That worry has echoed a few times lately."],
+              },
+              {
+                key: "sad",
+                re: /\b(sad|down|low|empty|hurt)\b/i,
+                lines: ["That sounds painful."],
+                repeatLines: ["That low feeling has appeared more than once lately."],
+              },
+              {
+                key: "anger",
+                re: /\b(angry|mad|furious|irritated|annoyed)\b/i,
+                lines: ["That sounds like it hit a nerve."],
+                repeatLines: ["That irritation has shown up a few times lately."],
+              },
+              {
+                key: "lonely",
+                re: /\b(lonely|alone|isolated|left out)\b/i,
+                lines: ["That sounds isolating."],
+                repeatLines: ["That alone feeling has come up more than once lately."],
+              },
+            ];
+
+            const hit = buckets.find((b) => b.re.test(lowerUser));
+
+            if (hit) {
+              // Repetition scan: check last 6 user messages for pattern
+              const recentUsers = msgs
+                .filter((m) => m?.role === "user")
+                .slice(-6)
+                .map((m) => (m?.content ?? "").toString().toLowerCase());
+
+              let repeatCount = 0;
+              for (const text of recentUsers) {
+                if (hit.re.test(text)) repeatCount++;
+              }
+
+              const isRepeated = repeatCount >= 2;
+              const pick = (arr: string[]) => arr[Math.floor(Math.random() * arr.length)];
+
+              // Update cooldown state
+              reflectionState.set(stateKey, { lastAt: now, lastMsgSig: msgSig });
+
+              return isRepeated ? pick(hit.repeatLines) : pick(hit.lines);
+            }
+          }
+        }
+        // ==================================================================================
 
         if (!apiKey) {
           // Demo mode - return a placeholder
