@@ -519,7 +519,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const endpoint = settings?.apiEndpoint || "https://api.openai.com/v1";
 
       // Stage 3: opt-in gate for memory-aware continuity (defaults OFF if missing)
-      const allowMemoryRefs: boolean = (settings as any)?.allowMemoryReferences === true;
+      const allowMemoryRefs: boolean = settings?.allowMemoryReferences === true;
 
       // Helper function to call the model
       // Note: sysPrompt is the enhanced system prompt from voice engine

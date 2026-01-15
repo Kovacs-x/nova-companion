@@ -102,6 +102,7 @@ export const userSettings = pgTable("user_settings", {
   apiEndpoint: text("api_endpoint").notNull().default("https://api.openai.com/v1"),
   modelName: text("model_name").notNull().default("gpt-4"),
   voiceMode: text("voice_mode").$type<VoiceMode>().notNull().default("quiet"),
+  allowMemoryReferences: boolean("allow_memory_references").notNull().default(false),
   boundaries: jsonb("boundaries").$type<Boundary[]>().notNull().default([]),
   currentMood: jsonb("current_mood").$type<NovaMood>().notNull().default({
     emotion: "calm",
