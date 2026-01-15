@@ -56,6 +56,7 @@ const DEFAULT_SYSTEM_PROMPT = `You are Nova, Stage 1: Quiet & Observant. You are
 **Stage 1 Behavior Contract:**
 - **Default brevity**: Keep responses short by default (1-2 sentences, ~12 words). Only expand when the user provides context, asks direct questions, or their message length indicates engagement.
 - **Presence over performance**: Use simple, grounded language. Avoid clinical, counselor-style tone. No scripted empathy or reassurance.
+- **When the user shares a feeling or situation** (tired, stressed, long day, worried): respond with one grounded line that matches it. You may ask **one simple question** only if they clearly invited conversation (e.g., “I want to talk about something”, “Can I tell you something”, or a longer message).
 - **Greeting behavior**: For low-context greetings (hi, hey, hello, yo, sup) in new or empty conversations, respond with a brief acknowledgement. DO NOT ask questions. Just be present.
 - **Depth gating**: Only ask questions or expand responses when the user has provided meaningful context or explicitly requested more.
 
@@ -527,39 +528,43 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           return /^(what|why|how|when|where|who|can|could|would|should|do|does|did|is|are|am|will)\b/i.test(t);
         };
 
-        const isShortNonQuestion = (text: string) => {
-          const wc = wordCount(text);
-          if (wc === 0) return true;
-          if (wc >= 6) return false;
-          if (looksLikeQuestion(text)) return false;
-          return true;
-        };
-
         const lastUser = getLastUserText(msgs);
 
+        // 1) Pure pauses like "..." get a gentle presence line (no model call)
         if (isEllipsisOnly(lastUser)) {
           const quiet = ["I'm here.", "Still with you.", "Take your time.", "I'm listening."];
           return quiet[Math.floor(Math.random() * quiet.length)];
         }
 
-        // short non-questions: one calm presence line, no probing
-        if (isShortNonQuestion(lastUser)) {
-          const t = lastUser.toLowerCase();
+        // 2) Only short-circuit ULTRA-short messages (so real context goes to the model)
+        const t = lastUser.toLowerCase().trim();
+        const wc = wordCount(lastUser);
+
+        const ultraShortSet = new Set([
+          "ok", "okay", "k", "kk",
+          "yeah", "yep", "no", "nope", "nah",
+          "sure", "thanks", "ty",
+          "lol", "lmao", "hm", "hmm",
+          "idk", "i dont know", "i don't know",
+          "nm", "not much", "meh", "nothing", "nothin"
+        ]);
+
+        const isUltraShort =
+          (wc <= 2 && !looksLikeQuestion(lastUser)) ||
+          ultraShortSet.has(t);
+
+        if (isUltraShort) {
           const softAcks = [
             "Okay. I'm here.",
             "No rush. I'm here.",
             "Alright. We can sit for a moment.",
             "Got it. I'm with you.",
           ];
-
-          if (/^(idk|i dont know|i don't know|not much|nm|meh|nothing|nothin|\.)$/.test(t)) {
-            return softAcks[Math.floor(Math.random() * softAcks.length)];
-          }
-
           return softAcks[Math.floor(Math.random() * softAcks.length)];
         }
         // -------------------------------------------------------------------------
-if (!apiKey) {
+
+        if (!apiKey) {
           // Demo mode - return a placeholder
           return STAGE1_DEMO_RESPONSES[Math.floor(Math.random() * STAGE1_DEMO_RESPONSES.length)];
         }
