@@ -1,0 +1,204 @@
+Step 3.1 — Add Stage 3 state (near reflectionState)
+
+Find this block:
+
+const reflectionState = new Map<
+  string,
+  { lastAt: number; lastMsgSig: string }
+>();
+
+
+Immediately below it, paste this:
+
+01 // ================== STAGE 3: CONTINUITY STATE (in-memory) ==================
+02 // Memory-aware continuity with cooldown so Nova doesn't over-reference history.
+03 // In-memory: resets on restart/deploy (acceptable for Stage 3 v1).
+04 const continuityState = new Map<
+05   string,
+06   { lastAt: number; lastMemoryId?: string }
+07 >();
+
+Step 3.2 — Capture opt-in flag inside /api/chat/completions
+
+Inside your /api/chat/completions handler you already do:
+
+const settings = await storage.getSettings(req.session.userId!);
+
+
+Right after that line, add:
+
+01 // Stage 3: opt-in gate for memory-aware continuity (defaults OFF if missing)
+02 const allowMemoryRefs: boolean = (settings as any)?.allowMemoryReferences === true;
+
+
+This keeps Stage 3 disabled unless you explicitly turn it on in settings.
+
+Step 3.3 — Add Stage 3 helper inside callModel()
+
+Inside callModel, after your helper functions (getLastUserText, isEllipsisOnly, wordCount, etc.) and after const lastUser = getLastUserText(msgs);, paste the following helper once.
+
+01 // ================== STAGE 3: MEMORY-AWARE CONTINUITY (one-line, opt-in) ==================
+02 // Returns a single continuity sentence or null.
+03 // - Opt-in only (allowMemoryRefs)
+04 // - Cooldown enforced
+05 // - High-confidence: only uses explicit stored memory content
+06 // - Never asks questions, never gives advice
+07 const maybeGetContinuityLine = async (lastUserText: string, convoId: string) => {
+08   try {
+09     if (!allowMemoryRefs) return null;
+10 
+11     const now = Date.now();
+12     const stateKey = `${req.session.userId}:${convoId}`;
+13     const prev = continuityState.get(stateKey) || { lastAt: 0, lastMemoryId: undefined };
+14 
+15     const COOLDOWN_MS = 10 * 60_000; // 10 minutes
+16     if (now - prev.lastAt < COOLDOWN_MS) return null;
+17 
+18     const lower = lastUserText.toLowerCase();
+19 
+20     // Only attempt continuity on emotionally substantive messages (Stage 2 already gates this elsewhere,
+21     // but we keep a minimal guard here too).
+22     if (wordCount(lastUserText) < 3) return null;
+23 
+24     // Fetch memories (explicit user-stored)
+25     const mems = await storage.getMemories(req.session.userId!);
+26     if (!mems || mems.length === 0) return null;
+27 
+28     // Lightweight keyword focus (keeps Stage 3 conservative and high-confidence)
+29     const focusTerms = [
+30       "stress", "stressed", "overwhelmed", "pressure",
+31       "tired", "exhausted", "drained",
+32       "long day", "hard day", "rough day",
+33       "worried", "anxious", "uneasy",
+34       "sad", "down", "low",
+35       "angry", "mad", "irritated",
+36       "lonely", "alone", "isolated"
+37     ];
+38 
+39     const matchedFocus = focusTerms.filter(t => lower.includes(t));
+40     if (matchedFocus.length === 0) return null;
+41 
+42     // Score memories by overlap (simple + predictable)
+43     const scored = mems
+44       .map((m: any) => {
+45         const text = String(m?.content ?? "").toLowerCase();
+46         const score = matchedFocus.reduce((acc, term) => acc + (text.includes(term) ? 1 : 0), 0);
+47         return { m, score };
+48       })
+49       .filter(x => x.score > 0)
+50       .sort((a, b) => b.score - a.score);
+51 
+52     const best = scored[0]?.m;
+53     if (!best) return null;
+54 
+55     // Avoid repeating the same memory reference again and again
+56     if (prev.lastMemoryId && String(best.id) === String(prev.lastMemoryId)) return null;
+57 
+58     // Build a short, safe continuity sentence (no quotes, no interpretation)
+59     const raw = String(best.content ?? "").trim().replace(/\s+/g, " ");
+60     if (!raw) return null;
+61 
+62     const snippet = raw.length > 80 ? `${raw.slice(0, 80)}…` : raw;
+63     const line = `Earlier you mentioned ${snippet.toLowerCase().startsWith("i ") ? snippet : snippet}.`;
+64 
+65     continuityState.set(stateKey, { lastAt: now, lastMemoryId: String(best.id) });
+66     return line;
+67   } catch {
+68     return null; // Failure mode: silent fallback to Stage 2 (contract rule)
+69   }
+70 };
+71 
+72 // Wrap a local Stage 2 reflection line with continuity (if allowed).
+73 const maybePrefixContinuity = async (baseLine: string) => {
+74   const convoId =
+75     (req.body?.conversationId as string) ||
+76     (req.body?.conversation_id as string) ||
+77     "default";
+78 
+79   const continuity = await maybeGetContinuityLine(lastUser, convoId);
+80   if (!continuity) return baseLine;
+81   return `${continuity} ${baseLine}`;
+82 };
+83 // ==================================================================================================
+
+
+Notes:
+
+This is intentionally “boring” and predictable — that’s good for Stage 3.
+
+If memory is irrelevant or selection is risky, it returns null and you fall back to Stage 2.
+
+Step 3.4 — Apply continuity ONLY to Stage 2 emotional short-circuits
+A) Quick Feeling Match block
+
+You currently have:
+
+if (wordCount(lastUser) >= 3) {
+  const hit = quickHits.find((h) => h.re.test(lower));
+  if (hit) return hit.line;
+}
+
+
+Replace only the return line with this:
+
+01 if (hit) return await maybePrefixContinuity(hit.line);
+
+
+So the whole micro-change becomes:
+
+01 if (wordCount(lastUser) >= 3) {
+02   const hit = quickHits.find((h) => h.re.test(lower));
+03   if (hit) return await maybePrefixContinuity(hit.line);
+04 }
+
+B) Stage 2 Reflective Presence return lines
+
+You currently have:
+
+if (isRepeated) return pick(hit.repeatLines);
+return pick(hit.lines);
+
+
+Replace those two returns with:
+
+01 const base = isRepeated ? pick(hit.repeatLines) : pick(hit.lines);
+02 return await maybePrefixContinuity(base);
+
+
+So that section becomes:
+
+01 if (hit) {
+02   const pick = (arr: string[]) => arr[Math.floor(Math.random() * arr.length)];
+03 
+04   reflectionState.set(stateKey, { lastAt: now, lastMsgSig: msgSig });
+05 
+06   const base = isRepeated ? pick(hit.repeatLines) : pick(hit.lines);
+07   return await maybePrefixContinuity(base);
+08 }
+
+
+Do not add continuity to:
+
+ellipsis-only returns
+
+invitesConversation return
+
+ultra-short returns
+
+That matches the contract.
+
+4) What you’ll see when it works
+
+With opt-in ON and a relevant memory present, a response becomes:
+
+“Earlier you mentioned work has been exhausting lately. That sounds like a lot to carry.”
+
+Still:
+
+No questions
+
+No advice
+
+One continuity sentence max
+
+Cooldown prevents repetition
