@@ -138,6 +138,36 @@ const STAGE1_DEMO_RESPONSES = [
   "Present.",
   "Understood.",
 ];
+/* 001 */ // ================== P1.1: API ENDPOINT ALLOWLIST (SSRF GUARD) ==================
+/* 002 */ // Canonicalize endpoints so variants like :443 or trailing slashes can’t bypass checks.
+/* 003 */ function normalizeApiEndpoint(raw: string): string | null {
+/* 004 */   try {
+/* 005 */     const u = new URL(raw.trim());
+/* 006 */     // Require HTTPS only
+/* 007 */     if (u.protocol !== "https:") return null;
+/* 008 */     // Disallow embedded credentials
+/* 009 */     if (u.username || u.password) return null;
+/* 010 */
+/* 011 */     // Strip default ports (443 for https)
+/* 012 */     const hostname = u.hostname.toLowerCase();
+/* 013 */     const port = u.port;
+/* 014 */     const isDefaultHttpsPort = port === "" || port === "443";
+/* 015 */     if (!isDefaultHttpsPort) return null; // block non-standard ports
+/* 016 */
+/* 017 */     // Normalize path to exactly /v1
+/* 018 */     const path = (u.pathname || "/").replace(/\/+$/, "");
+/* 019 */     if (path !== "/v1") return null;
+/* 020 */
+/* 021 */     return `https://${hostname}/v1`;
+/* 022 */   } catch {
+/* 023 */     return null;
+/* 024 */   }
+/* 025 */ }
+/* 026 */
+/* 027 */ const ALLOWED_API_ENDPOINTS = new Set<string>([
+/* 028 */   "https://api.openai.com/v1",
+/* 029 */   "https://api.anthropic.com/v1",
+/* 030 */ ]);
 
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
   // Trust proxy for production (required for secure cookies behind reverse proxy)
@@ -539,7 +569,17 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         // Get user settings for voice mode
         const settings = await storage.getSettings(req.session.userId!);
         const voiceMode: VoiceMode = (settings?.voiceMode as VoiceMode) || "quiet";
-        const endpoint = settings?.apiEndpoint || "https://api.openai.com/v1";
+    
+        // Normalize: remove trailing slashes
+        const rawEndpoint = (settings?.apiEndpoint ?? "https://api.openai.com/v1").trim();
+        const endpoint = normalizeApiEndpoint(rawEndpoint);
+
+        // P1.1 — Enforce API endpoint allowlist (null = invalid/rejected)
+        if (!endpoint || !ALLOWED_API_ENDPOINTS.has(endpoint)) {
+          return res.status(400).json({
+            error: "Invalid API endpoint",
+          });
+        }
 
         // Stage 3: opt-in gate for memory-aware continuity (defaults OFF if missing)
         const allowMemoryRefs: boolean = settings?.allowMemoryReferences === true;
@@ -846,7 +886,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
               const hit = buckets.find((b) => b.re.test(lowerUser));
 
-              if (hit) {
+              // P2: Substantive message gate — let longer/context-rich messages through to model
+              const isSubstantive =
+                wc >= 12 ||
+                /\b(because|and then|so that|which means|but then|after that)\b/i.test(lastUser);
+
+              if (hit && !isSubstantive) {
                 // Repetition scan: check last 6 user messages for pattern
                 const recentUsers = msgs
                   .filter((m) => m?.role === "user")
