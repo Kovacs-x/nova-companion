@@ -89,3 +89,41 @@ Core entities:
 - `@replit/vite-plugin-runtime-error-modal`: Error overlay in development
 - `@replit/vite-plugin-cartographer`: Development tooling
 - Custom meta images plugin for OpenGraph tags
+
+## Testing
+
+### Running Tests
+
+Run all tests with:
+```bash
+npx vitest run
+```
+
+Run tests in watch mode (re-runs on file changes):
+```bash
+npx vitest
+```
+
+### Test Coverage
+
+The test suite (`server/tests/p3-p4.test.ts`) includes 18 tests:
+
+**P3 IDOR / Ownership Hardening (13 tests)**
+- Versions: GET, PATCH, DELETE, and clone operations return 404 for non-owners
+- Conversations: GET, PATCH, DELETE operations return 404 for non-owners
+- Messages: POST to non-owned conversation returns 404
+- Memories: PATCH, DELETE operations return 404 for non-owners
+- Backups: DELETE operation returns 404 for non-owners
+- Owner access: Verifies owners can access their own resources
+
+**P4 Zod Validation (5 tests)**
+- Chat completions endpoint validates messages payload
+- Rejects missing messages, empty arrays, and malformed message objects
+- Accepts valid message payloads with role and content
+
+### Test Architecture
+
+- **Framework**: Vitest with Supertest for HTTP assertions
+- **Session Mocking**: Test middleware injects `req.session.userId` for user isolation
+- **Test Data**: Seeded via storage layer (userA owns resources, userB attempts unauthorized access)
+- **Assertion Pattern**: Non-owned resources return 404 (not 403) for security obscurity
