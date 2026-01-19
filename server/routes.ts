@@ -154,9 +154,9 @@ const STAGE1_DEMO_RESPONSES = [
 /* 014 */     const isDefaultHttpsPort = port === "" || port === "443";
 /* 015 */     if (!isDefaultHttpsPort) return null; // block non-standard ports
 /* 016 */
-/* 017 */     // Normalize path to exactly /v1
+/* 017 */     // Normalize path - must start with /v1 (allow common user input like /v1/chat/completions)
 /* 018 */     const path = (u.pathname || "/").replace(/\/+$/, "");
-/* 019 */     if (path !== "/v1") return null;
+/* 019 */     if (!path.startsWith("/v1")) return null;
 /* 020 */
 /* 021 */     return `https://${hostname}/v1`;
 /* 022 */   } catch {
@@ -354,7 +354,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.patch("/api/versions/:id", requireAuth, async (req, res) => {
     try {
-      const version = await storage.updateVersion(req.params.id, req.body);
+      const version = await storage.updateVersion(req.params.id, req.session.userId!, req.body);
+      if (!version) {
+        return res.status(404).json({ error: "Version not found" });
+      }
       res.json(version);
     } catch (error) {
       res.status(500).json({ error: "Failed to update version" });
@@ -363,7 +366,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.delete("/api/versions/:id", requireAuth, async (req, res) => {
     try {
-      await storage.deleteVersion(req.params.id);
+      const deleted = await storage.deleteVersion(req.params.id, req.session.userId!);
+      if (!deleted) {
+        return res.status(404).json({ error: "Version not found" });
+      }
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Failed to delete version" });
@@ -373,7 +379,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // Clone version
   app.post("/api/versions/:id/clone", requireAuth, async (req, res) => {
     try {
-      const original = await storage.getVersion(req.params.id);
+      const original = await storage.getVersion(req.params.id, req.session.userId!);
       if (!original) {
         return res.status(404).json({ error: "Version not found" });
       }
@@ -409,11 +415,11 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.get("/api/conversations/:id", requireAuth, async (req, res) => {
     try {
-      const conv = await storage.getConversation(req.params.id);
+      const conv = await storage.getConversation(req.params.id, req.session.userId!);
       if (!conv) {
         return res.status(404).json({ error: "Conversation not found" });
       }
-      const msgs = await storage.getMessages(req.params.id);
+      const msgs = await storage.getMessages(req.params.id, req.session.userId!);
       res.json({ ...conv, messages: msgs });
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch conversation" });
@@ -435,7 +441,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.patch("/api/conversations/:id", requireAuth, async (req, res) => {
     try {
-      const conv = await storage.updateConversation(req.params.id, req.body);
+      const conv = await storage.updateConversation(req.params.id, req.session.userId!, req.body);
+      if (!conv) {
+        return res.status(404).json({ error: "Conversation not found" });
+      }
       res.json(conv);
     } catch (error) {
       res.status(500).json({ error: "Failed to update conversation" });
@@ -444,7 +453,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.delete("/api/conversations/:id", requireAuth, async (req, res) => {
     try {
-      await storage.deleteConversation(req.params.id);
+      const deleted = await storage.deleteConversation(req.params.id, req.session.userId!);
+      if (!deleted) {
+        return res.status(404).json({ error: "Conversation not found" });
+      }
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Failed to delete conversation" });
@@ -459,14 +471,18 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         conversationId: req.params.id,
         role: req.body.role,
         content: req.body.content,
-      });
+      }, req.session.userId!);
+
+      if (!message) {
+        return res.status(404).json({ error: "Conversation not found" });
+      }
 
       // Update conversation title if first user message
-      const msgs = await storage.getMessages(req.params.id);
-      if (msgs.length === 1 && req.body.role === "user") {
+      const msgs = await storage.getMessages(req.params.id, req.session.userId!);
+      if (msgs && msgs.length === 1 && req.body.role === "user") {
         const title =
           req.body.content.slice(0, 40) + (req.body.content.length > 40 ? "..." : "");
-        await storage.updateConversation(req.params.id, { title });
+        await storage.updateConversation(req.params.id, req.session.userId!, { title });
       }
 
       // Update sync status
@@ -514,7 +530,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.patch("/api/memories/:id", requireAuth, async (req, res) => {
     try {
-      const memory = await storage.updateMemory(req.params.id, req.body);
+      const memory = await storage.updateMemory(req.params.id, req.session.userId!, req.body);
+      if (!memory) {
+        return res.status(404).json({ error: "Memory not found" });
+      }
       res.json(memory);
     } catch (error) {
       res.status(500).json({ error: "Failed to update memory" });
@@ -523,7 +542,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.delete("/api/memories/:id", requireAuth, async (req, res) => {
     try {
-      await storage.deleteMemory(req.params.id);
+      const deleted = await storage.deleteMemory(req.params.id, req.session.userId!);
+      if (!deleted) {
+        return res.status(404).json({ error: "Memory not found" });
+      }
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Failed to delete memory" });
@@ -555,14 +577,31 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   // ============ OPENAI PROXY WITH VOICE ENGINE ============
 
+  // P4: Zod schema for chat completions validation
+  const chatMessageSchema = z.object({
+    role: z.string(),
+    content: z.string(),
+  });
+  const chatCompletionsSchema = z.object({
+    messages: z.array(chatMessageSchema).min(1, "messages must be a non-empty array"),
+  });
+
   app.post(
     "/api/chat/completions",
     requireAuth,
     createRateLimiter({ windowMs: 15_000, max: 8 }),
     async (req, res) => {
       try {
+        // P4: Validate messages array
+        const parseResult = chatCompletionsSchema.safeParse(req.body);
+        if (!parseResult.success) {
+          return res.status(400).json({
+            error: "Invalid request: messages must be a non-empty array of { role, content }",
+          });
+        }
+
         const apiKey = process.env.OPENAI_API_KEY;
-        const messages = req.body.messages || [];
+        const messages = parseResult.data.messages;
         const systemPrompt = req.body.system_prompt || "";
         const modelName = req.body.model || "gpt-4";
 
@@ -1040,7 +1079,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const conversationsWithMessages = await Promise.all(
         conversations.map(async (conv) => ({
           ...conv,
-          messages: await storage.getMessages(conv.id),
+          messages: await storage.getMessages(conv.id, userId),
         })),
       );
 
@@ -1076,7 +1115,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const conversationsWithMessages = await Promise.all(
         conversations.map(async (conv) => ({
           ...conv,
-          messages: await storage.getMessages(conv.id),
+          messages: await storage.getMessages(conv.id, userId),
         })),
       );
 
@@ -1097,7 +1136,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.delete("/api/backups/:id", requireAuth, async (req, res) => {
     try {
-      await storage.deleteBackup(req.params.id);
+      const deleted = await storage.deleteBackup(req.params.id, req.session.userId!);
+      if (!deleted) {
+        return res.status(404).json({ error: "Backup not found" });
+      }
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Failed to delete backup" });

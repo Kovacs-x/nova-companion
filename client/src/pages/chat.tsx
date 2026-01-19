@@ -41,6 +41,7 @@ export default function ChatPage({
   const [isTyping, setIsTyping] = useState(false);
   const [showVersionPicker, setShowVersionPicker] = useState(false);
   const [isDemoMode, setIsDemoMode] = useState(false);
+  const [uiError, setUiError] = useState<string | null>(null);
   const [userHasScrolledUp, setUserHasScrolledUp] = useState(false);
   const [isScrolling, setIsScrolling] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -126,6 +127,7 @@ export default function ChatPage({
     await onSendMessage(targetConvId, content, "user");
 
     setIsTyping(true);
+    setUiError(null);
 
     try {
       const response = await api.chat.complete(
@@ -145,14 +147,18 @@ export default function ChatPage({
         "I'm here with you. What's on your mind?";
 
       await onSendMessage(targetConvId, assistantMessage, "assistant");
-    } catch (error) {
+    } catch (error: any) {
       setIsTyping(false);
       console.error("Chat error:", error);
-      await onSendMessage(
-        targetConvId,
-        "I apologize, but I encountered an issue. Let's try again.",
-        "assistant",
-      );
+
+      const message =
+        typeof error?.message === "string" && error.message.trim()
+          ? error.message
+          : "Something went wrong.";
+
+      // IMPORTANT: do NOT fabricate Nova messages on system errors.
+      setUiError(message);
+      return;
     }
   };
 
@@ -194,6 +200,13 @@ export default function ChatPage({
         ) : (
           <>
             <header className="flex flex-col border-b border-border/30 bg-card/30 backdrop-blur-sm z-10">
+              {uiError && (
+                <div className="px-6 py-2 bg-red-500/10 border-b border-red-500/20">
+                  <p className="text-xs text-red-300 text-center">
+                    {uiError}
+                  </p>
+                </div>
+              )}
               {isDemoMode && (
                 <div className="px-6 py-2 bg-purple-500/10 border-b border-purple-500/20">
                   <p className="text-xs text-purple-300 text-center">

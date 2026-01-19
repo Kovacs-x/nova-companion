@@ -25,7 +25,7 @@ import {
   type InsertSafetyBackup,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 
 export interface IStorage {
   // Users
@@ -35,29 +35,29 @@ export interface IStorage {
   updateUserPassword(id: string, passwordHash: string): Promise<void>;
   getUserCount(): Promise<number>;
 
-  // Nova Versions
+  // Nova Versions (P3: userId for ownership checks)
   getVersions(userId: string): Promise<NovaVersion[]>;
-  getVersion(id: string): Promise<NovaVersion | undefined>;
+  getVersion(id: string, userId: string): Promise<NovaVersion | undefined>;
   createVersion(version: InsertNovaVersion): Promise<NovaVersion>;
-  updateVersion(id: string, updates: Partial<NovaVersion>): Promise<NovaVersion>;
-  deleteVersion(id: string): Promise<void>;
+  updateVersion(id: string, userId: string, updates: Partial<NovaVersion>): Promise<NovaVersion | undefined>;
+  deleteVersion(id: string, userId: string): Promise<boolean>;
 
-  // Conversations
+  // Conversations (P3: userId for ownership checks)
   getConversations(userId: string): Promise<Conversation[]>;
-  getConversation(id: string): Promise<Conversation | undefined>;
+  getConversation(id: string, userId: string): Promise<Conversation | undefined>;
   createConversation(conv: InsertConversation): Promise<Conversation>;
-  updateConversation(id: string, updates: Partial<Conversation>): Promise<Conversation>;
-  deleteConversation(id: string): Promise<void>;
+  updateConversation(id: string, userId: string, updates: Partial<Conversation>): Promise<Conversation | undefined>;
+  deleteConversation(id: string, userId: string): Promise<boolean>;
 
-  // Messages
-  getMessages(conversationId: string): Promise<Message[]>;
-  createMessage(message: InsertMessage): Promise<Message>;
+  // Messages (P3: ownership via conversation)
+  getMessages(conversationId: string, userId: string): Promise<Message[] | null>;
+  createMessage(message: InsertMessage, userId: string): Promise<Message | null>;
 
-  // Memories
+  // Memories (P3: userId for ownership checks)
   getMemories(userId: string): Promise<Memory[]>;
   createMemory(memory: InsertMemory): Promise<Memory>;
-  updateMemory(id: string, updates: Partial<Memory>): Promise<Memory>;
-  deleteMemory(id: string): Promise<void>;
+  updateMemory(id: string, userId: string, updates: Partial<Memory>): Promise<Memory | undefined>;
+  deleteMemory(id: string, userId: string): Promise<boolean>;
 
   // User Settings
   getSettings(userId: string): Promise<UserSettings | undefined>;
@@ -69,10 +69,10 @@ export interface IStorage {
   createSyncStatus(status: InsertSyncStatus): Promise<SyncStatus>;
   updateSyncStatus(userId: string, updates: Partial<SyncStatus>): Promise<SyncStatus>;
 
-  // Safety Backups
+  // Safety Backups (P3: userId for ownership checks)
   getBackups(userId: string): Promise<SafetyBackup[]>;
   createBackup(backup: InsertSafetyBackup): Promise<SafetyBackup>;
-  deleteBackup(id: string): Promise<void>;
+  deleteBackup(id: string, userId: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -110,8 +110,11 @@ export class DatabaseStorage implements IStorage {
       .orderBy(novaVersions.createdAt);
   }
 
-  async getVersion(id: string): Promise<NovaVersion | undefined> {
-    const [version] = await db.select().from(novaVersions).where(eq(novaVersions.id, id));
+  async getVersion(id: string, userId: string): Promise<NovaVersion | undefined> {
+    const [version] = await db
+      .select()
+      .from(novaVersions)
+      .where(and(eq(novaVersions.id, id), eq(novaVersions.userId, userId)));
     return version || undefined;
   }
 
@@ -120,17 +123,21 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  async updateVersion(id: string, updates: Partial<NovaVersion>): Promise<NovaVersion> {
+  async updateVersion(id: string, userId: string, updates: Partial<NovaVersion>): Promise<NovaVersion | undefined> {
     const [updated] = await db
       .update(novaVersions)
       .set({ ...updates, updatedAt: new Date() })
-      .where(eq(novaVersions.id, id))
+      .where(and(eq(novaVersions.id, id), eq(novaVersions.userId, userId)))
       .returning();
-    return updated;
+    return updated || undefined;
   }
 
-  async deleteVersion(id: string): Promise<void> {
-    await db.delete(novaVersions).where(eq(novaVersions.id, id));
+  async deleteVersion(id: string, userId: string): Promise<boolean> {
+    const result = await db
+      .delete(novaVersions)
+      .where(and(eq(novaVersions.id, id), eq(novaVersions.userId, userId)))
+      .returning();
+    return result.length > 0;
   }
 
   // Conversations
@@ -142,8 +149,11 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(conversations.updatedAt));
   }
 
-  async getConversation(id: string): Promise<Conversation | undefined> {
-    const [conv] = await db.select().from(conversations).where(eq(conversations.id, id));
+  async getConversation(id: string, userId: string): Promise<Conversation | undefined> {
+    const [conv] = await db
+      .select()
+      .from(conversations)
+      .where(and(eq(conversations.id, id), eq(conversations.userId, userId)));
     return conv || undefined;
   }
 
@@ -154,22 +164,29 @@ export class DatabaseStorage implements IStorage {
 
   async updateConversation(
     id: string,
+    userId: string,
     updates: Partial<Conversation>,
-  ): Promise<Conversation> {
+  ): Promise<Conversation | undefined> {
     const [updated] = await db
       .update(conversations)
       .set({ ...updates, updatedAt: new Date() })
-      .where(eq(conversations.id, id))
+      .where(and(eq(conversations.id, id), eq(conversations.userId, userId)))
       .returning();
-    return updated;
+    return updated || undefined;
   }
 
-  async deleteConversation(id: string): Promise<void> {
-    await db.delete(conversations).where(eq(conversations.id, id));
+  async deleteConversation(id: string, userId: string): Promise<boolean> {
+    const result = await db
+      .delete(conversations)
+      .where(and(eq(conversations.id, id), eq(conversations.userId, userId)))
+      .returning();
+    return result.length > 0;
   }
 
-  // Messages
-  async getMessages(conversationId: string): Promise<Message[]> {
+  // Messages (P3: verify conversation ownership first)
+  async getMessages(conversationId: string, userId: string): Promise<Message[] | null> {
+    const conv = await this.getConversation(conversationId, userId);
+    if (!conv) return null;
     return db
       .select()
       .from(messages)
@@ -177,7 +194,9 @@ export class DatabaseStorage implements IStorage {
       .orderBy(messages.timestamp);
   }
 
-  async createMessage(message: InsertMessage): Promise<Message> {
+  async createMessage(message: InsertMessage, userId: string): Promise<Message | null> {
+    const conv = await this.getConversation(message.conversationId, userId);
+    if (!conv) return null;
     const [created] = await db.insert(messages).values(message).returning();
     return created;
   }
@@ -196,17 +215,21 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  async updateMemory(id: string, updates: Partial<Memory>): Promise<Memory> {
+  async updateMemory(id: string, userId: string, updates: Partial<Memory>): Promise<Memory | undefined> {
     const [updated] = await db
       .update(memories)
       .set(updates)
-      .where(eq(memories.id, id))
+      .where(and(eq(memories.id, id), eq(memories.userId, userId)))
       .returning();
-    return updated;
+    return updated || undefined;
   }
 
-  async deleteMemory(id: string): Promise<void> {
-    await db.delete(memories).where(eq(memories.id, id));
+  async deleteMemory(id: string, userId: string): Promise<boolean> {
+    const result = await db
+      .delete(memories)
+      .where(and(eq(memories.id, id), eq(memories.userId, userId)))
+      .returning();
+    return result.length > 0;
   }
 
   // User Settings
@@ -275,8 +298,12 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  async deleteBackup(id: string): Promise<void> {
-    await db.delete(safetyBackups).where(eq(safetyBackups.id, id));
+  async deleteBackup(id: string, userId: string): Promise<boolean> {
+    const result = await db
+      .delete(safetyBackups)
+      .where(and(eq(safetyBackups.id, id), eq(safetyBackups.userId, userId)))
+      .returning();
+    return result.length > 0;
   }
 }
 
