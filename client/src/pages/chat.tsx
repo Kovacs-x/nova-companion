@@ -47,6 +47,7 @@ export default function ChatPage({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /* 001 */ const pendingRequestIdRef = useRef(0);
 
   const currentConversation = conversations.find((c) => c.id === currentConversationId);
   const currentVersion = currentConversation
@@ -107,60 +108,70 @@ export default function ChatPage({
     setShowVersionPicker(false);
   };
 
-  const handleSend = async (content: string) => {
-    let targetConvId = currentConversationId;
-
-    if (!targetConvId) {
-      try {
-        const conv = await onNewConversation(versions[0].id);
-        targetConvId = conv.id;
-      } catch (error) {
-        console.error("Failed to create conversation:", error);
-        return;
-      }
-    }
-
-    const conv = conversations.find((c) => c.id === targetConvId);
-    const version = versions.find((v) => v.id === (conv?.versionId || versions[0].id));
-    const currentMessages = conv?.messages || [];
-
-    await onSendMessage(targetConvId, content, "user");
-
-    setIsTyping(true);
-    setUiError(null);
-
-    try {
-      const response = await api.chat.complete(
-        [...currentMessages, { role: "user", content }],
-        settings.modelName,
-        version?.systemPrompt || "",
-      );
-
-      setIsTyping(false);
-
-      if (response.mock) {
-        setIsDemoMode(true);
-      }
-
-      const assistantMessage =
-        response.choices?.[0]?.message?.content ||
-        "I'm here with you. What's on your mind?";
-
-      await onSendMessage(targetConvId, assistantMessage, "assistant");
-    } catch (error: any) {
-      setIsTyping(false);
-      console.error("Chat error:", error);
-
-      const message =
-        typeof error?.message === "string" && error.message.trim()
-          ? error.message
-          : "Something went wrong.";
-
-      // IMPORTANT: do NOT fabricate Nova messages on system errors.
-      setUiError(message);
-      return;
-    }
-  };
+    /* 001 */ const handleSend = async (content: string) => {
+    /* 002 */   let targetConvId = currentConversationId;
+    /* 003 */
+    /* 004 */   if (!targetConvId) {
+    /* 005 */     try {
+    /* 006 */       const conv = await onNewConversation(versions[0].id);
+    /* 007 */       targetConvId = conv.id;
+    /* 008 */     } catch (error) {
+    /* 009 */       console.error("Failed to create conversation:", error);
+    /* 010 */       return;
+    /* 011 */     }
+    /* 012 */   }
+    /* 013 */
+    /* 014 */   const conv = conversations.find((c) => c.id === targetConvId);
+    /* 015 */   const version = versions.find((v) => v.id === (conv?.versionId || versions[0].id));
+    /* 016 */   const currentMessages = conv?.messages || [];
+    /* 017 */
+    /* 018 */   // Track this request so older requests can't "win" UI state updates.
+    /* 019 */   const requestId = ++pendingRequestIdRef.current;
+    /* 020 */
+    /* 021 */   await onSendMessage(targetConvId, content, "user");
+    /* 022 */
+    /* 023 */   setUiError(null);
+    /* 024 */   setIsTyping(true);
+    /* 025 */
+    /* 026 */   try {
+    /* 027 */     const response = await api.chat.complete(
+    /* 028 */       [...currentMessages, { role: "user", content }],
+    /* 029 */       settings.modelName,
+    /* 030 */       version?.systemPrompt || "",
+    /* 031 */     );
+    /* 032 */
+    /* 033 */     // If a newer request started, ignore this result.
+    /* 034 */     if (requestId !== pendingRequestIdRef.current) return;
+    /* 035 */
+    /* 036 */     if (response.mock) {
+    /* 037 */       setIsDemoMode(true);
+    /* 038 */     }
+    /* 039 */
+    /* 040 */     const assistantMessage =
+    /* 041 */       response.choices?.[0]?.message?.content ||
+    /* 042 */       "I'm here with you. What's on your mind?";
+    /* 043 */
+    /* 044 */     await onSendMessage(targetConvId, assistantMessage, "assistant");
+    /* 045 */   } catch (error: any) {
+    /* 046 */     // If a newer request started, ignore this error.
+    /* 047 */     if (requestId !== pendingRequestIdRef.current) return;
+    /* 048 */
+    /* 049 */     console.error("Chat error:", error);
+    /* 050 */
+    /* 051 */     const message =
+    /* 052 */       typeof error?.message === "string" && error.message.trim()
+    /* 053 */         ? error.message
+    /* 054 */         : "Something went wrong.";
+    /* 055 */
+    /* 056 */     // IMPORTANT: do NOT fabricate Nova messages on system errors.
+    /* 057 */     setUiError(message);
+    /* 058 */   } finally {
+    /* 059 */     // Only the latest request should control typing state.
+    /* 060 */     if (requestId === pendingRequestIdRef.current) {
+    /* 061 */       setIsTyping(false);
+    /* 062 */     }
+    /* 063 */   }
+    /* 064 */ };
 
   return (
     <div className="flex h-screen bg-background">

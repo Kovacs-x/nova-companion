@@ -1,4 +1,4 @@
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { Message } from "@/lib/types";
 import { NovaAvatar } from "./NovaAvatar";
 import { cn } from "@/lib/utils";
@@ -76,26 +76,33 @@ export function ChatMessage({ message, isLast }: ChatMessageProps) {
 }
 
 export function TypingIndicator() {
+  const reduceMotion = useReducedMotion();
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.16, ease: "easeOut" }}
+      transition={{ duration: 0.18, ease: "easeOut" }}
       style={{ willChange: "opacity" }}
       className="flex gap-3 max-w-3xl mx-auto w-full px-4 min-h-[52px]"
     >
       <div className="flex-shrink-0 mt-1">
-        <NovaAvatar size="sm" animated />
+        <NovaAvatar size="sm" animated={!reduceMotion} />
       </div>
+
       <div className="px-4 py-3 rounded-2xl rounded-bl-md bg-card border border-border/50">
-        <div className="flex gap-1">
+        <div className="flex gap-1 items-center">
           {[0, 1, 2].map((i) => (
             <motion.div
               key={i}
-              className="w-2 h-2 rounded-full bg-purple-400/60"
-              animate={{ opacity: [0.6, 1, 0.6] }}
-              transition={{ duration: 0.8, repeat: Infinity, delay: i * 0.2 }}
+              className="w-2 h-2 rounded-full bg-foreground/35"
+              animate={reduceMotion ? { opacity: 0.6 } : { opacity: [0.35, 0.8, 0.35] }}
+              transition={
+                reduceMotion
+                  ? { duration: 0 }
+                  : { duration: 1.05, repeat: Infinity, ease: "easeInOut", delay: i * 0.22 }
+              }
             />
           ))}
         </div>
@@ -103,3 +110,4 @@ export function TypingIndicator() {
     </motion.div>
   );
 }
+
