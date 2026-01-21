@@ -1,7 +1,7 @@
 import express from "express";
 import request from "supertest";
 import { describe, it, expect } from "vitest";
-import { createDiagnosticsRouter } from "./diagnostics";
+import { createDiagnosticsRouter } from "../routes/diagnostics";
 
 describe("Stage 4 - Diagnostics & Observability", () => {
   it("GET /api/diagnostics returns safe, read-only metadata", async () => {
