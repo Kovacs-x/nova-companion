@@ -1,10 +1,13 @@
 modules = ["nodejs-20", "web", "postgresql-16"]
-run = "npm run dev"
+
+# Always free port 5000 before starting dev server
+run = "bash -lc 'pids=$(lsof -t -i :5000 2>/dev/null || true); if [ -n \"$pids\" ]; then echo \"[replit] freeing port 5000 (pids: $pids)\"; kill $pids 2>/dev/null || true; sleep 0.2; kill -9 $pids 2>/dev/null || true; fi; npm run dev'"
+
 hidden = [".config", ".git", "generated-icon.png", "node_modules", "dist"]
 
 [nix]
 channel = "stable-24_05"
-packages = ["run"]
+packages = ["run", "lsof"]
 
 [[ports]]
 localPort = 5000
@@ -34,9 +37,10 @@ args = "Start application"
 name = "Start application"
 author = "agent"
 
+# Same guard here, so workflow run doesn't collide either
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "npm run dev"
+args = "bash -lc 'pids=$(lsof -t -i :5000 2>/dev/null || true); if [ -n \"$pids\" ]; then echo \"[replit] freeing port 5000 (pids: $pids)\"; kill $pids 2>/dev/null || true; sleep 0.2; kill -9 $pids 2>/dev/null || true; fi; npm run dev'"
 waitForPort = 5000
 
 [agent]
