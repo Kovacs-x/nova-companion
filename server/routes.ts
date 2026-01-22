@@ -5,8 +5,10 @@ import bcrypt from "bcrypt";
 import { storage } from "./storage";
 import { z } from "zod";
 import { v4 as uuidv4 } from "uuid";
+import { randomUUID } from "crypto";
 import type { NovaRule, Boundary, NovaMood, VoiceMode } from "@shared/schema";
 import { generateResponse, buildEnhancedSystemPrompt } from "./voice-engine";
+import { recordDecision } from "./telemetry/decision-log";
 // ================== SIMPLE IN-MEMORY RATE LIMITER ==================
 // Prevents accidental rapid calls that burn OpenAI usage.
 // In-memory: resets on restart/deploy (fine as a safety net).
@@ -604,6 +606,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         const messages = parseResult.data.messages;
         const systemPrompt = req.body.system_prompt || "";
         const modelName = req.body.model || "gpt-4";
+        const requestId = randomUUID();
+        let modelCallCount = 0;
 
         // Get user settings for voice mode
         const settings = await storage.getSettings(req.session.userId!);
@@ -970,6 +974,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
             ...msgs.filter((m) => m.role !== "system"), // Exclude any system messages from input
           ];
 
+          modelCallCount += 1;
           const response = await fetch(`${endpoint}/chat/completions`, {
             method: "POST",
             headers: {
@@ -1005,6 +1010,19 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           callModel,
         );
 
+        recordDecision(req.session.userId!, {
+          ts: new Date().toISOString(),
+          requestId,
+          route: "/api/chat/completions",
+          voiceMode,
+          allowMemoryReferences: allowMemoryRefs,
+          model: modelName,
+          apiEndpoint: endpoint,
+          shortCircuited: result.shortCircuited,
+          rewritten: result.rewritten,
+          modelCallCount,
+        });
+
         res.json({
           mock: !apiKey,
           voiceEngine: {
@@ -1029,32 +1047,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   );
 
   // ============ DIAGNOSTICS ============
-
-  app.get("/api/diagnostics", requireAuth, async (req, res) => {
-    try {
-      const syncStatusData = await storage.getSyncStatus(req.session.userId!);
-      const versions = await storage.getVersions(req.session.userId!);
-      const conversations = await storage.getConversations(req.session.userId!);
-      const memories = await storage.getMemories(req.session.userId!);
-
-      res.json({
-        syncStatus: syncStatusData || {
-          schemaVersion: 1,
-          lastSyncTime: null,
-          syncCount: 0,
-          lastError: null,
-        },
-        stats: {
-          versionsCount: versions.length,
-          conversationsCount: conversations.length,
-          memoriesCount: memories.length,
-        },
-        hasApiKey: !!process.env.OPENAI_API_KEY,
-      });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch diagnostics" });
-    }
-  });
 
   // ============ BACKUPS ============
 
