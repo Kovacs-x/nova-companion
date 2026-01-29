@@ -3,25 +3,25 @@ import path from "path";
 
 export type DecisionRecord = {
   /**
-   * Canonical timestamp going forward.
+   * Canonical timestamp.
    * Keep BOTH `ts` and `at` for compatibility across the codebase.
    */
   ts: string; // ISO timestamp
-  at: string; // ISO timestamp (alias; kept for older callsites/diagnostics)
+  at: string; // ISO timestamp (alias)
 
   // request context
   route: string;
   requestId?: string;
 
   // Stage 4: which gate handled the response
-  stage?: string; // e.g. "stage1_local_short_circuit" | "stage2_reflection" | "llm_call" | ...
-  reason?: string; // e.g. "ellipsis" | "tiny_ack" | "invites_conversation" | bucket key | ...
+  stage?: string;
+  reason?: string;
 
   // execution facts (observability only)
   shortCircuited?: boolean;
   rewritten?: boolean;
-  modelCallCount?: number; // Stage 4.2: should be <= 1
-  memoryReadCount?: number; // counts explicit storage reads used in gate flow
+  modelCallCount?: number;
+  memoryReadCount?: number;
 
   // policy-relevant metadata (no secrets)
   voiceMode?: string;
@@ -45,26 +45,20 @@ function ensureLogPath() {
     fs.mkdirSync(LOG_DIR, { recursive: true });
     if (!fs.existsSync(LOG_PATH)) fs.writeFileSync(LOG_PATH, "", "utf8");
   } catch {
-    // best-effort: if FS is unavailable, we keep in-memory telemetry only
+    // best-effort
   }
 }
 
 function appendToFile(line: string) {
   try {
     ensureLogPath();
-    fs.appendFileSync(LOG_PATH, line + "
-", "utf8");
+    fs.appendFileSync(LOG_PATH, line + "\n", "utf8");
   } catch {
     // best-effort
   }
 }
 
 type RecordDecisionInput = Omit<DecisionRecord, "ts" | "at"> & {
-  /**
-   * Accept legacy/alternate timestamp keys from callsites.
-   * - preferred: ts
-   * - accepted: at
-   */
   ts?: string;
   at?: string;
 };
@@ -76,7 +70,6 @@ export function recordDecision(userKey: string, record: RecordDecisionInput) {
     ts: iso,
     at: iso,
     ...record,
-    // Ensure the stored record uses the canonical values (even if record.at differs)
     ts: iso,
     at: iso,
   };
@@ -108,7 +101,6 @@ export function getDecisionLogCount(userKey: string): number {
   return (store.get(userKey) ?? []).length;
 }
 
-// Single-user fallback: if diagnostics is hit without session, return most recent across users.
 export function getLastDecisionGlobal(): { userKey: string; decision: DecisionRecord } | null {
   let best: { userKey: string; decision: DecisionRecord } | null = null;
 
@@ -116,7 +108,6 @@ export function getLastDecisionGlobal(): { userKey: string; decision: DecisionRe
     const d = arr[arr.length - 1];
     if (!d) continue;
 
-    // compare ISO strings safely by lexicographic ordering
     if (!best || d.ts > best.decision.ts) {
       best = { userKey, decision: d };
     }
@@ -125,11 +116,9 @@ export function getLastDecisionGlobal(): { userKey: string; decision: DecisionRe
   return best;
 }
 
-// Stage 4.1: user-deletable telemetry (clears in-memory and wipes the local file)
 export function clearDecisionLog(userKey: string) {
   store.delete(userKey);
 
-  // single-user reality: wipe the whole file
   try {
     ensureLogPath();
     fs.writeFileSync(LOG_PATH, "", "utf8");
@@ -138,12 +127,10 @@ export function clearDecisionLog(userKey: string) {
   }
 }
 
-// Debug-only: surfaced in diagnostics so you can see where the append-only log lives.
 export function __getDecisionLogPathForDebug() {
   return LOG_PATH;
 }
 
-// Test helper (safe to keep; only used in unit tests if imported)
 export function __resetDecisionLogForTests() {
   store.clear();
   try {
