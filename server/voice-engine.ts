@@ -221,6 +221,10 @@ export interface VoiceEngineOutput {
   response: string;
   shortCircuited: boolean;
   rewritten: boolean;
+
+  // Stage 4: gate decision visibility (observability-only)
+  stage?: string; // "stage1_local_short_circuit" | "llm_call"
+  reason?: string; // "greeting" | "ellipsis" | "ultra_short" | "casual_probe" | "sanitized_banned_phrase:<phrase>" | null
 }
 
 export function buildEnhancedSystemPrompt(
@@ -304,6 +308,8 @@ export async function generateResponse(
       response: randomChoice(greetingResponses),
       shortCircuited: true,
       rewritten: false,
+      stage: "stage1_local_short_circuit",
+      reason: "greeting",
     };
   }
 
@@ -313,6 +319,8 @@ export async function generateResponse(
       response: randomChoice(ELLIPSIS_RESPONSES),
       shortCircuited: true,
       rewritten: false,
+      stage: "stage1_local_short_circuit",
+      reason: "ellipsis",
     };
   }
 
@@ -322,6 +330,8 @@ export async function generateResponse(
       response: randomChoice(ULTRA_SHORT_RESPONSES),
       shortCircuited: true,
       rewritten: false,
+      stage: "stage1_local_short_circuit",
+      reason: "ultra_short",
     };
   }
 
@@ -331,6 +341,8 @@ export async function generateResponse(
       response: randomChoice(CASUAL_PROBE_RESPONSES),
       shortCircuited: true,
       rewritten: false,
+      stage: "stage1_local_short_circuit",
+      reason: "casual_probe",
     };
   }
 
@@ -345,12 +357,15 @@ export async function generateResponse(
   const bannedPhrase = containsBannedPhrase(response, userAskedAboutCapabilities);
 
   let rewritten = false;
+  let reason: string | undefined;
+
   if (bannedPhrase) {
     // IMPORTANT: keep a single causal chain per response (no second model call).
     const sanitized = sanitizeBannedPhrase(response, bannedPhrase);
     if (sanitized !== response) {
       response = sanitized;
       rewritten = true;
+      reason = `sanitized_banned_phrase:${bannedPhrase}`;
     }
   }
 
@@ -366,6 +381,8 @@ export async function generateResponse(
     response,
     shortCircuited: false,
     rewritten,
+    stage: "llm_call",
+    reason,
   };
 }
 

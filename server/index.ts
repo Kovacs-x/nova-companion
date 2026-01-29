@@ -23,9 +23,6 @@ app.use(
 
 app.use(express.urlencoded({ extended: false }));
 
-// Stage 4: Read-only diagnostics (safe metadata only)
-app.use("/api", createDiagnosticsRouter());
-
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
     hour: "numeric",
@@ -65,6 +62,10 @@ app.use((req, res, next) => {
 
 (async () => {
   await registerRoutes(httpServer, app);
+
+  // Stage 4: Read-only diagnostics (safe metadata only)
+  // IMPORTANT: mount AFTER registerRoutes so session middleware exists.
+  app.use("/api", createDiagnosticsRouter());
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
