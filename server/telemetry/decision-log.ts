@@ -2,15 +2,18 @@ import fs from "fs";
 import path from "path";
 
 export type DecisionRecord = {
-  // ISO timestamp
-  at: string;
+  /**
+   * Canonical timestamp going forward.
+   * Keep BOTH `ts` and `at` for compatibility across the codebase.
+   */
+  ts: string; // ISO timestamp
+  at: string; // ISO timestamp (alias; kept for older callsites/diagnostics)
 
   // request context
   route: string;
   requestId?: string;
 
   // Stage 4: which gate handled the response
-  // Keep using the existing "stage" field name in this project.
   stage?: string; // e.g. "stage1_local_short_circuit" | "stage2_reflection" | "llm_call" | ...
   reason?: string; // e.g. "ellipsis" | "tiny_ack" | "invites_conversation" | bucket key | ...
 
@@ -49,26 +52,33 @@ function ensureLogPath() {
 function appendToFile(line: string) {
   try {
     ensureLogPath();
-    fs.appendFileSync(LOG_PATH, line + "\n", "utf8");
+    fs.appendFileSync(LOG_PATH, line + "
+", "utf8");
   } catch {
     // best-effort
   }
 }
 
-export function recordDecision(
-  userKey: string,
-  record: (Omit<DecisionRecord, "at"> & { at?: string }) & { ts?: string },
-) {
-  // Accept legacy/alternate timestamp key "ts" (callsite uses it today).
-  const at = record.at || record.ts || new Date().toISOString();
+type RecordDecisionInput = Omit<DecisionRecord, "ts" | "at"> & {
+  /**
+   * Accept legacy/alternate timestamp keys from callsites.
+   * - preferred: ts
+   * - accepted: at
+   */
+  ts?: string;
+  at?: string;
+};
 
-  // Strip ts so it never leaks into the stored record shape.
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { ts, ...rest } = record;
+export function recordDecision(userKey: string, record: RecordDecisionInput) {
+  const iso = record.ts || record.at || new Date().toISOString();
 
   const entry: DecisionRecord = {
-    at,
-    ...rest,
+    ts: iso,
+    at: iso,
+    ...record,
+    // Ensure the stored record uses the canonical values (even if record.at differs)
+    ts: iso,
+    at: iso,
   };
 
   const arr = store.get(userKey) ?? [];
@@ -106,7 +116,8 @@ export function getLastDecisionGlobal(): { userKey: string; decision: DecisionRe
     const d = arr[arr.length - 1];
     if (!d) continue;
 
-    if (!best || d.at > best.decision.at) {
+    // compare ISO strings safely by lexicographic ordering
+    if (!best || d.ts > best.decision.ts) {
       best = { userKey, decision: d };
     }
   }
