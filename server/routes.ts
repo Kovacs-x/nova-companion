@@ -45,70 +45,6 @@ const reflectionState = new Map<string, { lastAt: number; lastMsgSig: string }>(
 // In-memory: resets on restart/deploy (acceptable for Stage 3 v1).
 const continuityState = new Map<string, { lastAt: number; lastMemoryId?: string }>();
 
-// ================== STAGE 4: COOLDOWN SNAPSHOT (observability only) ==================
-// Diagnostics must read cooldowns from the same in-gate maps.
-// Read-only: does not influence Stage 1–3 behavior.
-export function getCooldownSnapshotForUser(userId: string) {
-  const now = Date.now();
-
-  const REFLECTION_COOLDOWN_MS = 45_000;
-  const CONTINUITY_COOLDOWN_MS = 10 * 60_000;
-
-  const reflection: Array<{
-    convoId: string;
-    lastAt: number;
-    remainingMs: number;
-    active: boolean;
-  }> = [];
-
-  const continuity: Array<{
-    convoId: string;
-    lastAt: number;
-    remainingMs: number;
-    active: boolean;
-  }> = [];
-
-  // Keys are `${userId}:${convoId}`
-  for (const [key, v] of reflectionState.entries()) {
-    if (!key.startsWith(`${userId}:`)) continue;
-    const convoId = key.slice(userId.length + 1) || "default";
-    const remainingMs = Math.max(0, REFLECTION_COOLDOWN_MS - (now - v.lastAt));
-    reflection.push({
-      convoId,
-      lastAt: v.lastAt,
-      remainingMs,
-      active: remainingMs > 0,
-    });
-  }
-
-  for (const [key, v] of continuityState.entries()) {
-    if (!key.startsWith(`${userId}:`)) continue;
-    const convoId = key.slice(userId.length + 1) || "default";
-    const remainingMs = Math.max(0, CONTINUITY_COOLDOWN_MS - (now - v.lastAt));
-    continuity.push({
-      convoId,
-      lastAt: v.lastAt,
-      remainingMs,
-      active: remainingMs > 0,
-    });
-  }
-
-  const newest = <T extends { lastAt: number }>(arr: T[]) =>
-    arr.length ? arr.reduce((best, cur) => (cur.lastAt > best.lastAt ? cur : best)) : null;
-
-  return {
-    summary: {
-      reflection:
-        newest(reflection) ?? { convoId: "none", lastAt: 0, remainingMs: 0, active: false },
-      continuity:
-        newest(continuity) ?? { convoId: "none", lastAt: 0, remainingMs: 0, active: false },
-    },
-    reflection: reflection.sort((a, b) => b.lastAt - a.lastAt),
-    continuity: continuity.sort((a, b) => b.lastAt - a.lastAt),
-  };
-}
-// =================================================================================================
-
 const SALT_ROUNDS = 12;
 
 declare module "express-session" {
@@ -643,14 +579,36 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   // ============ OPENAI PROXY WITH VOICE ENGINE ============
 
-  // P4: Zod schema for chat completions validation
-  const chatMessageSchema = z.object({
+  // P4: Zod schema for chat completions validation  const chatMessageSchema = z.object({
     role: z.string(),
     content: z.string(),
   });
-  const chatCompletionsSchema = z.object({
-    messages: z.array(chatMessageSchema).min(1, "messages must be a non-empty array"),
-  });
+
+  const chatCompletionsSchema = z
+    .object({
+      messages: z.array(chatMessageSchema).min(1, "messages must be a non-empty array"),
+
+      // Optional metadata fields (used by Stage 1–3 gates / observability).
+      conversationId: z.string().optional(),
+      voiceMode: z.string().optional(),
+      allowMemoryReferences: z.boolean().optional(),
+
+      // Security-critical: only allow known API endpoints (SSRF guard).
+      apiEndpoint: z.string().url().optional(),
+
+      // Optional model selection; kept permissive (validated downstream / by OpenAI).
+      model: z.string().optional(),
+    })
+    .passthrough()
+    .superRefine((v, ctx) => {
+      if (v.apiEndpoint && !validateApiEndpoint(v.apiEndpoint)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "apiEndpoint is not allowed",
+          path: ["apiEndpoint"],
+        });
+      }
+    });
 
   app.post(
     "/api/chat/completions",
@@ -672,7 +630,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         const modelName = req.body.model || "gpt-4";
         const requestId = randomUUID();
         let modelCallCount = 0;
-        let memoryReadCount = 0;
 
         // Get user settings for voice mode
         const settings = await storage.getSettings(req.session.userId!);
@@ -771,7 +728,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
               if (wordCount(lastUserText) < 3) return null;
 
               // Fetch memories (explicit user-stored)
-              memoryReadCount += 1;
               const mems = await storage.getMemories(req.session.userId!);
               if (!mems || mems.length === 0) return null;
 
@@ -1076,28 +1032,18 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           callModel,
         );
 
-                
         recordDecision(req.session.userId!, {
           ts: new Date().toISOString(),
           requestId,
           route: "/api/chat/completions",
-
-          // Stage 4: gate handled + reason (from the voice engine’s actual path)
-          stage: result.stage,
-          reason: result.reason,
-
           voiceMode,
           allowMemoryReferences: allowMemoryRefs,
           model: modelName,
           apiEndpoint: endpoint,
           shortCircuited: result.shortCircuited,
           rewritten: result.rewritten,
-
-          // Stage 4 proof-of-absence counters
           modelCallCount,
-          memoryReadCount,
         });
-
 
         res.json({
           mock: !apiKey,
